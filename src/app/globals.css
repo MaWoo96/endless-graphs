@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Endless Winning Brand Colors */
+  --color-navy-dark: #1E1A2A;
+  --color-navy-medium: #2F4F6A;
+  --color-teal: #8AB2B5;
+  --color-off-white: #F5F5F5;
+  --color-gray: #B8B8B8;
+  --color-black: #0A0A0A;
+
+  /* Financial Semantic Colors */
+  --color-winning-green: #10b981;
+  --color-loss-red: #ef4444;
+  --color-warning-amber: #f59e0b;
+  --color-info-blue: #3b82f6;
+
+  /* Chart Colors - Professional Palette */
+  --color-chart-1: #7C3AED;
+  --color-chart-2: #EC4899;
+  --color-chart-3: #8AB2B5;
+  --color-chart-4: #F59E0B;
+  --color-chart-5: #10B981;
+  --color-chart-6: #3B82F6;
+  --color-chart-7: #EF4444;
+  --color-chart-8: #A855F7;
+
+  /* Semantic Colors */
+  --color-primary: var(--color-navy-dark);
+  --color-secondary: var(--color-navy-medium);
+  --color-accent: var(--color-teal);
+  --color-background: var(--color-off-white);
+  --color-text: var(--color-navy-dark);
+  --color-text-muted: var(--color-gray);
+
+  /* Font */
+  --font-sans: var(--font-geist-sans);
+}
+
+@layer base {
+  * {
+    @apply box-border;
+  }
+
+  html {
+    @apply scroll-smooth;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-text font-sans antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold text-navy-dark;
+  }
+
+  h1 { @apply text-4xl sm:text-5xl md:text-6xl; }
+  h2 { @apply text-3xl sm:text-4xl md:text-5xl; }
+  h3 { @apply text-2xl sm:text-3xl md:text-4xl; }
+  h4 { @apply text-xl sm:text-2xl; }
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply hover:shadow-lg hover:-translate-y-1;
+  }
+
+  .chart-container {
+    @apply w-full h-full p-6 bg-white rounded-xl;
+  }
+
+  .metric-card {
+    @apply p-6 bg-gradient-to-br from-white to-gray-50 rounded-xl border border-gray-100;
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, #7C3AED 0%, #EC4899 50%, #EF4444 100%);
+  }
+
+  .gradient-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  }
+
+  .gradient-loss {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  }
+
+  /* Glass Morphism Styles from Cosmos-Aura */
+  .glass-panel {
+    @apply backdrop-blur-xl shadow-xl;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-card {
+    @apply backdrop-blur-xl rounded-xl shadow-xl;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .glass-card-light {
+    @apply backdrop-blur-xl rounded-xl shadow-lg;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .glass-input {
+    @apply border focus:ring-2 focus:ring-emerald-500/50;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-button {
+    @apply border transition-colors;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .glass-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-surface {
+    @apply backdrop-blur-xl shadow-lg;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+}
+
+@layer utilities {
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  }
+
+  .shadow-glow-sm {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  }
+
+  .bg-gradient-mint {
+    background-image:
+      radial-gradient(1200px 600px at 10% -10%, rgba(16, 185, 129, 0.15), transparent 60%),
+      radial-gradient(800px 400px at 90% -20%, rgba(139, 178, 181, 0.1), transparent 70%);
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-teal rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-navy-medium;
+}
