@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Client, Transaction, MonthlyData, CategoryData, CashFlowData } from "@/lib/supabase/types";
+
+// Pagination constants - prevents loading unbounded transactions
+const PAGE_SIZE = 500;
+const MAX_PAGES = 10; // Safety limit: max 5,000 transactions
 
 interface DateRange {
   startDate: Date;
@@ -14,6 +19,8 @@ interface ClientDataState {
   transactions: Transaction[];
   isLoading: boolean;
   error: string | null;
+  hasMore: boolean;
+  totalCount: number | null;
 }
 
 interface AggregatedData {
@@ -29,18 +36,27 @@ interface AggregatedData {
   };
 }
 
-export function useClientData(dateRange?: DateRange) {
+export function useClientData(dateRange?: DateRange, entityId?: string | null) {
   const [state, setState] = useState<ClientDataState>({
     client: null,
     transactions: [],
     isLoading: true,
     error: null,
+    hasMore: false,
+    totalCount: null,
   });
+  const [currentPage, setCurrentPage] = useState(0);
 
   const supabase = createClient();
 
-  const fetchData = useCallback(async () => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+  const fetchData = useCallback(async (page = 0, append = false) => {
+    setState(prev => ({
+      ...prev,
+      isLoading: true,
+      error: null,
+      // Clear transactions if this is a fresh fetch (not appending)
+      ...(append ? {} : { transactions: [] })
+    }));
 
     try {
       // Get current user
@@ -48,7 +64,127 @@ export function useClientData(dateRange?: DateRange) {
       if (userError) throw userError;
       if (!user) throw new Error("Not authenticated");
 
-      // Get client record for this user
+      // First try new multi-tenant schema: users table with auth_user_id
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("auth_user_id", user.id)
+        .limit(1);
+
+      if (!usersError && users && users.length > 0) {
+        // New multi-tenant schema
+        const dbUser = users[0];
+
+        // Get tenant via tenant_users junction table (separate queries to avoid RLS issues)
+        const { data: tenantUsers, error: tuError } = await supabase
+          .from("tenant_users")
+          .select("tenant_id")
+          .eq("user_id", dbUser.id)
+          .limit(1);
+
+        if (tuError) throw tuError;
+
+        const tenantUser = tenantUsers?.[0];
+
+        // Get tenant details separately
+        let tenant = null;
+        if (tenantUser?.tenant_id) {
+          const { data: tenants } = await supabase
+            .from("tenants")
+            .select("*")
+            .eq("id", tenantUser.tenant_id)
+            .limit(1);
+          tenant = tenants?.[0];
+        }
+
+        // Get entity - either the specified one or fetch from tenant
+        let entity = null;
+
+        if (entityId) {
+          // Use the specified entity ID directly
+          const { data: entityData, error: entityError } = await supabase
+            .from("entities")
+            .select("*")
+            .eq("id", entityId)
+            .limit(1);
+
+          if (entityError) throw entityError;
+          entity = entityData?.[0];
+        } else {
+          // Fallback: get first entity for this user's tenant
+          const { data: entities, error: entitiesError } = await supabase
+            .from("entities")
+            .select("*")
+            .eq("tenant_id", tenant?.id)
+            .limit(1);
+
+          if (entitiesError) throw entitiesError;
+          entity = entities?.[0];
+        }
+
+        // Create a client-like object for backwards compatibility
+        const client: Client = {
+          id: entity?.id || dbUser.id,
+          user_id: user.id,
+          business_name: entity?.name || tenant?.name || `${dbUser.first_name} ${dbUser.last_name}`,
+          company_name: entity?.name || tenant?.name || null,
+          email: dbUser.email || '',
+          created_at: dbUser.created_at,
+          entity_type: null,
+          ein: null,
+          first_name: dbUser.first_name || null,
+          last_name: dbUser.last_name || null,
+          phone: null,
+          industry: null,
+          role: null,
+          team_size: null,
+          monthly_revenue: null,
+          goals: null,
+          challenges: null,
+          airtable_base_id: null,
+          industry_profile_id: null,
+          updated_at: null,
+        };
+
+        // Build transaction query using entity_id with pagination
+        const rangeStart = page * PAGE_SIZE;
+        const rangeEnd = rangeStart + PAGE_SIZE - 1;
+
+        let query = supabase
+          .from("transactions")
+          .select("*", { count: "exact" })
+          .eq("entity_id", entity?.id)
+          .order("date", { ascending: false })
+          .range(rangeStart, rangeEnd);
+
+        // Apply date range filter if provided
+        if (dateRange) {
+          query = query
+            .gte("date", dateRange.startDate.toISOString().split("T")[0])
+            .lte("date", dateRange.endDate.toISOString().split("T")[0]);
+        }
+
+        const { data: transactions, error: txError, count } = await query;
+        if (txError) throw txError;
+
+        const fetchedTransactions = transactions || [];
+        const hasMore = count !== null && rangeEnd < count - 1 && page < MAX_PAGES - 1;
+
+        setState(prev => ({
+          client,
+          transactions: append
+            ? [...prev.transactions, ...fetchedTransactions]
+            : fetchedTransactions,
+          isLoading: false,
+          error: null,
+          hasMore,
+          totalCount: count,
+        }));
+        setCurrentPage(page);
+        return;
+      }
+
+      // Fallback to legacy clients table
       const { data: clients, error: clientError } = await supabase
         .from("clients")
         .select("*")
@@ -66,18 +202,24 @@ export function useClientData(dateRange?: DateRange) {
           transactions: [],
           isLoading: false,
           error: "No client profile found. Please complete onboarding.",
+          hasMore: false,
+          totalCount: null,
         });
         return;
       }
 
       const client = clients[0];
 
-      // Build transaction query
+      // Build transaction query using client_id (legacy) with pagination
+      const rangeStart = page * PAGE_SIZE;
+      const rangeEnd = rangeStart + PAGE_SIZE - 1;
+
       let query = supabase
         .from("transactions")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("client_id", client.id)
-        .order("date", { ascending: false });
+        .order("date", { ascending: false })
+        .range(rangeStart, rangeEnd);
 
       // Apply date range filter if provided
       if (dateRange) {
@@ -86,29 +228,53 @@ export function useClientData(dateRange?: DateRange) {
           .lte("date", dateRange.endDate.toISOString().split("T")[0]);
       }
 
-      const { data: transactions, error: txError } = await query;
+      const { data: transactions, error: txError, count } = await query;
       if (txError) throw txError;
 
-      setState({
+      const fetchedTransactions = transactions || [];
+      const hasMore = count !== null && rangeEnd < count - 1 && page < MAX_PAGES - 1;
+
+      setState(prev => ({
         client,
-        transactions: transactions || [],
+        transactions: append
+          ? [...prev.transactions, ...fetchedTransactions]
+          : fetchedTransactions,
         isLoading: false,
         error: null,
-      });
+        hasMore,
+        totalCount: count,
+      }));
+      setCurrentPage(page);
     } catch (err) {
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: err instanceof Error ? err.message : "Failed to fetch data",
+        hasMore: false,
+        totalCount: null,
       }));
     }
-  }, [supabase, dateRange?.startDate?.getTime(), dateRange?.endDate?.getTime()]);
+  }, [supabase, dateRange?.startDate?.getTime(), dateRange?.endDate?.getTime(), entityId]);
+
+  // Load more transactions (for infinite scroll or "load more" button)
+  const loadMore = useCallback(() => {
+    if (state.hasMore && !state.isLoading) {
+      fetchData(currentPage + 1, true);
+    }
+  }, [fetchData, currentPage, state.hasMore, state.isLoading]);
 
   useEffect(() => {
-    fetchData();
+    // Reset to page 0 when date range changes
+    setCurrentPage(0);
+    fetchData(0, false);
   }, [fetchData]);
 
-  return { ...state, refetch: fetchData };
+  return {
+    ...state,
+    refetch: () => fetchData(0, false),
+    loadMore,
+    currentPage,
+  };
 }
 
 export function useAggregatedData(transactions: Transaction[]): AggregatedData {
@@ -148,10 +314,9 @@ export function useAggregatedData(transactions: Transaction[]): AggregatedData {
     }
   });
 
-  // Convert to arrays and sort
+  // Convert to arrays and sort - use ALL filtered transactions (date range already applied)
   const monthlyRevenue: MonthlyData[] = Array.from(monthlyMap.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-12)
     .map(([key, data]) => {
       const [year, month] = key.split("-");
       const date = new Date(parseInt(year), parseInt(month) - 1);
@@ -204,7 +369,9 @@ export function useAggregatedData(transactions: Transaction[]): AggregatedData {
 export function useUser() {
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
     const getUser = async () => {
@@ -215,16 +382,29 @@ export function useUser() {
 
     getUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ? { id: session.user.id, email: session.user.email || "" } : null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+        // Redirect to login page after sign out
+        router.push("/login");
+      } else {
+        setUser(session?.user ? { id: session.user.id, email: session.user.email || "" } : null);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase, router]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setIsSigningOut(true);
+    try {
+      await supabase.auth.signOut();
+      // The onAuthStateChange handler will redirect to /login
+    } catch (error) {
+      console.error("Error signing out:", error);
+      setIsSigningOut(false);
+    }
   };
 
-  return { user, isLoading, signOut };
+  return { user, isLoading, isSigningOut, signOut };
 }

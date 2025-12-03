@@ -120,12 +120,12 @@ export function DateRangePicker({
   };
 
   const buttonClasses = variant === "glass"
-    ? "flex items-center gap-2 px-4 py-2 glass-input rounded-lg hover:bg-white/20 transition-all text-sm font-medium text-navy-dark"
-    : "flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all text-sm font-medium text-navy-dark";
+    ? "flex items-center gap-2 px-4 py-2 glass-input rounded-lg hover:bg-white/20 transition-all text-sm font-medium text-navy-dark dark:text-white"
+    : "flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-sm font-medium text-navy-dark dark:text-white";
 
   const dropdownClasses = variant === "glass"
     ? "absolute top-full right-0 mt-2 glass-surface rounded-lg z-50 overflow-hidden"
-    : "absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden";
+    : "absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden";
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -136,7 +136,7 @@ export function DateRangePicker({
         <Calendar className="h-4 w-4 text-winning-green" />
         <span>{getDisplayLabel()}</span>
         {readOnly && (
-          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-500 rounded">
+          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded">
             Read Only
           </span>
         )}
@@ -154,7 +154,7 @@ export function DateRangePicker({
                   className={`w-full px-4 py-2.5 text-left text-sm transition-colors flex items-center justify-between
                     ${selected === option.value
                       ? 'bg-winning-green/10 text-winning-green font-medium'
-                      : 'text-navy-dark hover:bg-gray-50'
+                      : 'text-navy-dark dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                     }`}
                 >
                   <span>{option.label}</span>
@@ -167,10 +167,10 @@ export function DateRangePicker({
           ) : (
             <div className="p-4 w-80">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-navy-dark">Custom Date Range</h3>
+                <h3 className="text-sm font-semibold text-navy-dark dark:text-white">Custom Date Range</h3>
                 <button
                   onClick={handleCancelCustom}
-                  className="p-1 hover:bg-gray-100 rounded transition-colors"
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                 >
                   <X className="h-4 w-4 text-gray-400" />
                 </button>
@@ -178,19 +178,19 @@ export function DateRangePicker({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                     Start Date
                   </label>
                   <input
                     type="date"
                     value={customRange.startDate}
                     onChange={(e) => setCustomRange(prev => ({ ...prev, startDate: e.target.value }))}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-winning-green/50 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-navy-dark dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-winning-green/50 focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                     End Date
                   </label>
                   <input
@@ -198,7 +198,7 @@ export function DateRangePicker({
                     value={customRange.endDate}
                     onChange={(e) => setCustomRange(prev => ({ ...prev, endDate: e.target.value }))}
                     min={customRange.startDate}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-winning-green/50 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-navy-dark dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-winning-green/50 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -206,7 +206,7 @@ export function DateRangePicker({
               <div className="flex gap-2 mt-4">
                 <button
                   onClick={handleCancelCustom}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
                   Cancel
                 </button>

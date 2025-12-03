@@ -27,6 +27,9 @@ export interface Transaction {
   id: string;
   plaid_transaction_id: string;
   client_id: string | null;
+  entity_id: string | null;
+  tenant_id: string | null;
+  user_id: string | null;
   plaid_item_id: string | null;
   account_id: string;
   amount: number;
@@ -52,6 +55,31 @@ export interface Transaction {
   mcc_code: string | null;
   created_at: string | null;
   updated_at: string | null;
+  // Plaid enrichment fields
+  is_removed: boolean | null;
+  removed_at: string | null;
+  pfc_primary: string | null;
+  pfc_detailed: string | null;
+  pfc_confidence: string | null;
+  pfc_icon_url: string | null;
+  merchant_logo_url: string | null;
+  merchant_website: string | null;
+  merchant_entity_id: string | null;
+  counterparties: Record<string, unknown> | null;
+  // Location fields
+  location_address: string | null;
+  location_city: string | null;
+  location_region: string | null;
+  location_postal_code: string | null;
+  location_country: string | null;
+  location_lat: number | null;
+  location_lon: number | null;
+  location_store_number: string | null;
+  // Review fields for client feedback
+  review_status: "flagged" | "approved" | "rejected" | null;
+  review_notes: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
 }
 
 export interface PlaidItem {

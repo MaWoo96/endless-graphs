@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+// Cookie domain for cross-app session sharing in production
+const cookieDomain = process.env.NODE_ENV === 'production' ? '.endlesswinning.com' : undefined
+
 export async function createClient() {
   const cookieStore = await cookies()
 
@@ -15,7 +18,11 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                // Add shared cookie domain for production
+                ...(cookieDomain && { domain: cookieDomain }),
+              })
             )
           } catch {
             // The `setAll` method was called from a Server Component.

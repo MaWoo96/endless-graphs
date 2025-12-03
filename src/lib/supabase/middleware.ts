@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// Onboarding app URL - configured for production
+const ONBOARDING_URL = process.env.NEXT_PUBLIC_ONBOARDING_URL || 'https://onboarding.endlesswinning.com'
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -51,6 +54,33 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
+  }
+
+  // Check if user has completed onboarding (has a public.users record)
+  // Only check for authenticated users on protected routes
+  if (user && !isAuthRoute) {
+    // Check for user record in public.users table
+    const { data: dbUser, error: dbError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_user_id', user.id)
+      .maybeSingle()
+
+    // If no user record exists, redirect to onboarding
+    // Note: We also check legacy clients table for backwards compatibility
+    if (!dbUser && !dbError) {
+      const { data: legacyClient } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      if (!legacyClient) {
+        // User is authenticated but hasn't completed onboarding
+        // Redirect to the onboarding app
+        return NextResponse.redirect(new URL(ONBOARDING_URL))
+      }
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're

@@ -47,16 +47,16 @@ export function KPICard({
 
   const cardClasses = variant === "glass"
     ? "glass-card-light p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
-    : "card card-hover p-6";
+    : "bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5";
 
   return (
     <div className={cardClasses}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-text-muted uppercase tracking-wide">
+          <p className="text-sm font-medium text-text-muted dark:text-gray-400 uppercase tracking-wide">
             {title}
           </p>
-          <h3 className="text-3xl font-bold text-navy-dark mt-2">{value}</h3>
+          <h3 className="text-3xl font-bold text-navy-dark dark:text-white mt-2">{value}</h3>
           <div className="flex items-center gap-2 mt-3">
             <div
               className={cn(
@@ -69,10 +69,10 @@ export function KPICard({
               <ArrowUpRight className={cn("h-3 w-3", !isPositive && "rotate-90")} />
               {Math.abs(change)}%
             </div>
-            <span className="text-sm text-text-muted">{period}</span>
+            <span className="text-sm text-text-muted dark:text-gray-500">{period}</span>
           </div>
         </div>
-        <div className="size-12 rounded-xl bg-gray-100/80 border border-gray-200/50 flex items-center justify-center shadow-sm">
+        <div className="size-12 rounded-xl bg-gray-100/80 dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700 flex items-center justify-center shadow-sm">
           <Icon className={cn("w-6 h-6", accentClasses[accentColor])} />
         </div>
       </div>
