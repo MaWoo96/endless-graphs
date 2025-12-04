@@ -10,7 +10,6 @@ import { CashFlowWaterfallChart } from "@/components/charts/WaterfallChart";
 import { ChartErrorBoundary, ErrorBoundary } from "@/components/ErrorBoundary";
 import { TransactionTable } from "@/components/TransactionTable";
 import { EmptyState, ChartSkeleton, KPICardSkeleton } from "@/components/EmptyStates";
-import { GenerateReportButton } from "@/components/FinancialReport";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   expensesByCategory as mockExpensesByCategory,
@@ -368,21 +367,15 @@ export default function Home() {
                   </div>
                   <div className="flex items-center gap-3">
                     {hasRealData && (
-                      <GenerateReportButton
-                        businessName={client?.business_name || selectedEntity?.name || "Business"}
-                        reportPeriod={getPeriodLabel(kpiDateOption)}
-                        kpiMetrics={{
-                          totalRevenue: kpiAggregatedData.kpiMetrics.totalRevenue,
-                          totalExpenses: kpiAggregatedData.kpiMetrics.totalExpenses,
-                          netProfit: kpiAggregatedData.kpiMetrics.netProfit,
-                          profitMargin: kpiAggregatedData.kpiMetrics.profitMargin,
-                          transactionCount: kpiAggregatedData.kpiMetrics.transactionCount,
-                        }}
-                        monthlyData={kpiAggregatedData.monthlyRevenue}
-                        expensesByCategory={kpiAggregatedData.expensesByCategory}
-                        cashFlow={kpiAggregatedData.cashFlow}
-                        className="hidden sm:flex"
-                      />
+                      <button
+                        disabled
+                        className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 font-medium rounded-lg cursor-not-allowed"
+                        title="Coming Soon"
+                      >
+                        <FileDown className="h-4 w-4" />
+                        <span>Download Report</span>
+                        <span className="text-xs bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">Soon</span>
+                      </button>
                     )}
                     <DateRangePicker
                       value={kpiDateOption}
