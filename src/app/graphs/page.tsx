@@ -3,15 +3,19 @@
 import { useState, useMemo, useCallback } from "react";
 import { ExpensesPieChart } from "@/components/charts/ExpensesPieChart";
 import { KPICard } from "@/components/charts/KPICard";
+import { EnhancedKPICard, KPIGrid } from "@/components/charts/EnhancedKPICard";
 import { IncomeVsExpensesChart } from "@/components/charts/IncomeVsExpensesChart";
 import { MonthToMonthComparison } from "@/components/charts/MonthToMonthComparison";
+import { CashFlowWaterfallChart } from "@/components/charts/WaterfallChart";
 import { ChartErrorBoundary, ErrorBoundary } from "@/components/ErrorBoundary";
 import { TransactionTable } from "@/components/TransactionTable";
+import { EmptyState, ChartSkeleton, KPICardSkeleton } from "@/components/EmptyStates";
+import { GenerateReportButton } from "@/components/FinancialReport";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   expensesByCategory as mockExpensesByCategory,
 } from "@/lib/mock-data";
-import { BarChart3, LogOut, Loader2, AlertCircle, RefreshCw, ArrowLeft, LayoutDashboard, Receipt } from "lucide-react";
+import { BarChart3, LogOut, Loader2, AlertCircle, RefreshCw, ArrowLeft, LayoutDashboard, Receipt, FileDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { DateRangePicker, DateRangeOption } from "@/components/DateRangePicker";
 import { YearPicker } from "@/components/YearPicker";
@@ -351,7 +355,7 @@ export default function Home() {
 
             {/* Dashboard Tab */}
             <TabsContent value="dashboard" className="mt-0">
-              {/* KPI Metrics Grid */}
+              {/* KPI Metrics Grid - Enhanced with sparklines */}
               <section className="mb-8">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -362,20 +366,101 @@ export default function Home() {
                       </p>
                     )}
                   </div>
-                  <DateRangePicker
-                    value={kpiDateOption}
-                    onChange={setKpiDateOption}
-                    readOnly={false}
-                    showPeriodPresets={true}
-                  />
+                  <div className="flex items-center gap-3">
+                    {hasRealData && (
+                      <GenerateReportButton
+                        businessName={client?.business_name || selectedEntity?.name || "Business"}
+                        reportPeriod={getPeriodLabel(kpiDateOption)}
+                        kpiMetrics={{
+                          totalRevenue: kpiAggregatedData.kpiMetrics.totalRevenue,
+                          totalExpenses: kpiAggregatedData.kpiMetrics.totalExpenses,
+                          netProfit: kpiAggregatedData.kpiMetrics.netProfit,
+                          profitMargin: kpiAggregatedData.kpiMetrics.profitMargin,
+                          transactionCount: kpiAggregatedData.kpiMetrics.transactionCount,
+                        }}
+                        monthlyData={kpiAggregatedData.monthlyRevenue}
+                        expensesByCategory={kpiAggregatedData.expensesByCategory}
+                        cashFlow={kpiAggregatedData.cashFlow}
+                        className="hidden sm:flex"
+                      />
+                    )}
+                    <DateRangePicker
+                      value={kpiDateOption}
+                      onChange={setKpiDateOption}
+                      readOnly={false}
+                      showPeriodPresets={true}
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {kpiMetrics.map((metric, index) => (
-                    <ErrorBoundary key={index}>
-                      <KPICard {...metric} />
+
+                {/* Enhanced KPI Cards with Sparklines */}
+                {hasRealData ? (
+                  <KPIGrid columns={4}>
+                    <ErrorBoundary>
+                      <EnhancedKPICard
+                        title="Gross Income"
+                        value={kpiAggregatedData.kpiMetrics.totalRevenue}
+                        previousValue={kpiAggregatedData.previousPeriod.totalRevenue}
+                        prefix="$"
+                        trend="up"
+                        period={periodLabel}
+                        sparklineData={kpiAggregatedData.sparklines.revenue}
+                        icon="dollar"
+                        format="currency"
+                        accentColor="green"
+                      />
                     </ErrorBoundary>
-                  ))}
-                </div>
+                    <ErrorBoundary>
+                      <EnhancedKPICard
+                        title="Gross Expenses"
+                        value={kpiAggregatedData.kpiMetrics.totalExpenses}
+                        previousValue={kpiAggregatedData.previousPeriod.totalExpenses}
+                        prefix="$"
+                        trend="down"
+                        period={periodLabel}
+                        sparklineData={kpiAggregatedData.sparklines.expenses}
+                        icon="credit"
+                        format="currency"
+                        accentColor="red"
+                      />
+                    </ErrorBoundary>
+                    <ErrorBoundary>
+                      <EnhancedKPICard
+                        title="Net Profit"
+                        value={kpiAggregatedData.kpiMetrics.netProfit}
+                        previousValue={kpiAggregatedData.previousPeriod.netProfit}
+                        prefix="$"
+                        trend={kpiAggregatedData.kpiMetrics.netProfit >= 0 ? "up" : "down"}
+                        period={periodLabel}
+                        sparklineData={kpiAggregatedData.sparklines.profit}
+                        icon="piggy"
+                        format="currency"
+                        accentColor={kpiAggregatedData.kpiMetrics.netProfit >= 0 ? "teal" : "red"}
+                      />
+                    </ErrorBoundary>
+                    <ErrorBoundary>
+                      <EnhancedKPICard
+                        title="Profit Margin"
+                        value={kpiAggregatedData.kpiMetrics.profitMargin}
+                        suffix="%"
+                        trend={kpiAggregatedData.kpiMetrics.profitMargin >= 0 ? "up" : "down"}
+                        period="Of revenue"
+                        sparklineData={kpiAggregatedData.sparklines.margin}
+                        icon="percent"
+                        format="percent"
+                        accentColor={kpiAggregatedData.kpiMetrics.profitMargin >= 0 ? "blue" : "red"}
+                      />
+                    </ErrorBoundary>
+                  </KPIGrid>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {kpiMetrics.map((metric, index) => (
+                      <ErrorBoundary key={index}>
+                        <KPICard {...metric} />
+                      </ErrorBoundary>
+                    ))}
+                  </div>
+                )}
               </section>
 
               {/* Income vs Expenses */}
@@ -450,6 +535,17 @@ export default function Home() {
                   />
                 </ChartErrorBoundary>
               </section>
+
+              {/* Cash Flow Waterfall Chart */}
+              {hasRealData && kpiAggregatedData.cashFlow.length > 0 && (
+                <section className="mb-8">
+                  <ChartErrorBoundary>
+                    <CashFlowWaterfallChart
+                      data={kpiAggregatedData.cashFlow}
+                    />
+                  </ChartErrorBoundary>
+                </section>
+              )}
             </TabsContent>
 
             {/* Transactions Tab */}

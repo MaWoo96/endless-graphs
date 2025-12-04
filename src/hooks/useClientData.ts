@@ -33,6 +33,20 @@ interface AggregatedData {
     netProfit: number;
     transactionCount: number;
     avgTransactionSize: number;
+    profitMargin: number;
+  };
+  // Sparkline data for KPI cards (monthly values for trend visualization)
+  sparklines: {
+    revenue: number[];
+    expenses: number[];
+    profit: number[];
+    margin: number[];
+  };
+  // Previous period metrics for comparison (first half vs second half of data)
+  previousPeriod: {
+    totalRevenue: number;
+    totalExpenses: number;
+    netProfit: number;
   };
 }
 
@@ -347,6 +361,11 @@ export function useAggregatedData(transactions: Transaction[]): AggregatedData {
     net: m.profit,
   }));
 
+  // Calculate profit margin
+  const profitMargin = totalRevenue > 0
+    ? ((totalRevenue - totalExpenses) / totalRevenue) * 100
+    : 0;
+
   // KPI metrics
   const kpiMetrics = {
     totalRevenue: Math.round(totalRevenue),
@@ -356,6 +375,26 @@ export function useAggregatedData(transactions: Transaction[]): AggregatedData {
     avgTransactionSize: transactions.length > 0
       ? Math.round(transactions.reduce((sum, tx) => sum + Math.abs(tx.amount), 0) / transactions.length)
       : 0,
+    profitMargin: Math.round(profitMargin * 10) / 10,
+  };
+
+  // Generate sparkline data from monthly values
+  const sparklines = {
+    revenue: monthlyRevenue.map((m) => m.revenue),
+    expenses: monthlyRevenue.map((m) => m.expenses),
+    profit: monthlyRevenue.map((m) => m.profit),
+    margin: monthlyRevenue.map((m) =>
+      m.revenue > 0 ? Math.round(((m.revenue - m.expenses) / m.revenue) * 100) : 0
+    ),
+  };
+
+  // Calculate previous period metrics (first half of the data for comparison)
+  const midpoint = Math.floor(monthlyRevenue.length / 2);
+  const previousHalf = monthlyRevenue.slice(0, midpoint);
+  const previousPeriod = {
+    totalRevenue: previousHalf.reduce((sum, m) => sum + m.revenue, 0),
+    totalExpenses: previousHalf.reduce((sum, m) => sum + m.expenses, 0),
+    netProfit: previousHalf.reduce((sum, m) => sum + m.profit, 0),
   };
 
   return {
@@ -363,6 +402,8 @@ export function useAggregatedData(transactions: Transaction[]): AggregatedData {
     expensesByCategory,
     cashFlow,
     kpiMetrics,
+    sparklines,
+    previousPeriod,
   };
 }
 
