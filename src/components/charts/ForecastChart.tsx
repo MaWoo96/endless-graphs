@@ -8,6 +8,7 @@ import {
   CartesianGrid,
   ReferenceLine,
 } from "recharts";
+import { useTheme } from "next-themes";
 import { ChartCard } from "./ChartCard";
 import {
   ChartContainer,
@@ -16,6 +17,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
+import { CHART_COLORS, CHART_COLORS_DARK, FINANCIAL_COLORS, FINANCIAL_COLORS_DARK, CHART_AXIS_COLORS } from "@/lib/chart-colors";
 
 interface ForecastDataPoint {
   date: string;
@@ -30,18 +32,19 @@ interface ForecastChartProps {
   description?: string;
 }
 
+// Chart config uses CSS variables for theme support
 const chartConfig = {
   balance: {
     label: "Net Balance",
-    color: "hsl(217 91% 60%)", // Blue
+    color: "var(--chart-10)", // Blue
   },
   withIncome: {
     label: "With Income",
-    color: "hsl(152 73% 55%)", // Green
+    color: "var(--chart-3)", // Emerald/Green
   },
   afterExpenses: {
     label: "After Expenses",
-    color: "hsl(38 92% 50%)", // Amber
+    color: "var(--chart-5)", // Amber
   },
 };
 
@@ -50,6 +53,12 @@ export function ForecastChart({
   title = "Balance Projection",
   description = "Projected balance over time based on spending patterns"
 }: ForecastChartProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const chartColors = isDark ? CHART_COLORS_DARK : CHART_COLORS;
+  const financialColors = isDark ? FINANCIAL_COLORS_DARK : FINANCIAL_COLORS;
+  const axisColors = isDark ? CHART_AXIS_COLORS.dark : CHART_AXIS_COLORS.light;
+
   const minBalance = Math.min(...data.map(d => Math.min(d.balance, d.withIncome, d.afterExpenses)));
   const hasNegative = minBalance < 0;
 
@@ -57,18 +66,18 @@ export function ForecastChart({
     <ChartCard title={title} description={description}>
       <ChartContainer config={chartConfig} className="w-full h-[350px] aspect-auto">
         <LineChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={axisColors.grid} strokeOpacity={axisColors.gridOpacity} />
           <XAxis
             dataKey="date"
             tickLine={false}
             axisLine={false}
-            style={{ fontSize: "12px" }}
+            tick={{ fill: axisColors.label, fontSize: 12 }}
           />
           <YAxis
             tickLine={false}
             axisLine={false}
             width={70}
-            style={{ fontSize: "12px" }}
+            tick={{ fill: axisColors.label, fontSize: 12 }}
             tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
           />
           <ChartTooltip
@@ -87,7 +96,7 @@ export function ForecastChart({
           {hasNegative && (
             <ReferenceLine
               y={0}
-              stroke="hsl(0 84% 60%)"
+              stroke={financialColors.loss}
               strokeDasharray="5 5"
               strokeWidth={2}
             />
@@ -95,7 +104,7 @@ export function ForecastChart({
           <Line
             type="monotone"
             dataKey="withIncome"
-            stroke="hsl(152 73% 55%)"
+            stroke={financialColors.profit}
             strokeWidth={2}
             dot={false}
             name="withIncome"
@@ -103,7 +112,7 @@ export function ForecastChart({
           <Line
             type="monotone"
             dataKey="afterExpenses"
-            stroke="hsl(38 92% 50%)"
+            stroke={chartColors.amber}
             strokeWidth={2}
             dot={false}
             strokeDasharray="5 5"
@@ -112,7 +121,7 @@ export function ForecastChart({
           <Line
             type="monotone"
             dataKey="balance"
-            stroke="hsl(217 91% 60%)"
+            stroke={chartColors.blue}
             strokeWidth={3}
             dot={false}
             name="balance"

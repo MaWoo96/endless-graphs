@@ -1,7 +1,9 @@
 "use client";
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { useTheme } from "next-themes";
 import { ChartCard } from "./ChartCard";
+import { CHART_COLOR_SEQUENCE, CHART_COLOR_SEQUENCE_DARK } from "@/lib/chart-colors";
 
 interface BudgetCategory {
   category: string;
@@ -16,29 +18,24 @@ interface BudgetPieChartProps {
   description?: string;
 }
 
-const COLORS = [
-  "hsl(271 91% 65%)", // Purple
-  "hsl(217 91% 60%)", // Blue
-  "hsl(152 73% 55%)", // Green
-  "hsl(38 92% 50%)",  // Amber
-  "hsl(0 84% 60%)",   // Red
-  "hsl(199 89% 48%)", // Cyan
-];
-
 export function BudgetPieChart({
   data,
   title = "Budget Breakdown",
   description = "Spending distribution by category"
 }: BudgetPieChartProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const colors = isDark ? CHART_COLOR_SEQUENCE_DARK : CHART_COLOR_SEQUENCE;
+
   const total = data.reduce((sum, item) => sum + item.amount, 0);
 
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: BudgetCategory }> }) => {
     if (active && payload && payload.length) {
       const item = payload[0].payload;
       return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="font-semibold text-navy-dark">{item.category}</p>
-          <p className="text-sm text-text-muted">
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-3">
+          <p className="font-semibold text-navy-dark dark:text-white">{item.category}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             ${item.amount.toLocaleString()} ({item.percentage}%)
           </p>
         </div>
@@ -53,9 +50,9 @@ export function BudgetPieChart({
         <div key={entry.category} className="flex items-center gap-2">
           <div
             className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: COLORS[index % COLORS.length] }}
+            style={{ backgroundColor: colors[index % colors.length] }}
           />
-          <span className="text-xs text-text-muted">{entry.category}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{entry.category}</span>
         </div>
       ))}
     </div>
@@ -80,7 +77,7 @@ export function BudgetPieChart({
               {data.map((_, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
+                  fill={colors[index % colors.length]}
                   className="transition-opacity hover:opacity-80"
                 />
               ))}
@@ -90,8 +87,8 @@ export function BudgetPieChart({
         </ResponsiveContainer>
         {renderCustomLegend()}
         <div className="text-center mt-2">
-          <p className="text-sm text-text-muted">Total Budget</p>
-          <p className="text-xl font-bold text-navy-dark">
+          <p className="text-sm text-gray-500 dark:text-gray-400">Total Budget</p>
+          <p className="text-xl font-bold text-navy-dark dark:text-white">
             ${total.toLocaleString()}
           </p>
         </div>

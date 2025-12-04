@@ -8,6 +8,7 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
+import { useTheme } from "next-themes";
 import { ChartCard } from "./ChartCard";
 import {
   ChartContainer,
@@ -16,6 +17,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
+import { CHART_COLORS, CHART_COLORS_DARK, FINANCIAL_COLORS, FINANCIAL_COLORS_DARK, CHART_AXIS_COLORS } from "@/lib/chart-colors";
 
 interface BudgetComparisonItem {
   category: string;
@@ -30,14 +32,15 @@ interface BudgetComparisonChartProps {
   description?: string;
 }
 
+// Chart config uses CSS variables for theme support
 const chartConfig = {
   budget: {
     label: "Budget",
-    color: "hsl(217 91% 60%)", // Blue
+    color: "var(--chart-10)", // Blue
   },
   actual: {
     label: "Actual",
-    color: "hsl(152 73% 55%)", // Green
+    color: "var(--chart-3)", // Emerald
   },
 };
 
@@ -46,6 +49,12 @@ export function BudgetComparisonChart({
   title = "Budget vs Actual",
   description = "Compare planned budget against actual spending"
 }: BudgetComparisonChartProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const chartColors = isDark ? CHART_COLORS_DARK : CHART_COLORS;
+  const financialColors = isDark ? FINANCIAL_COLORS_DARK : FINANCIAL_COLORS;
+  const axisColors = isDark ? CHART_AXIS_COLORS.dark : CHART_AXIS_COLORS.light;
+
   return (
     <ChartCard title={title} description={description}>
       <ChartContainer config={chartConfig} className="w-full h-[350px] aspect-auto">
@@ -54,12 +63,12 @@ export function BudgetComparisonChart({
           layout="vertical"
           margin={{ top: 10, right: 30, left: 80, bottom: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={axisColors.grid} strokeOpacity={axisColors.gridOpacity} />
           <XAxis
             type="number"
             tickLine={false}
             axisLine={false}
-            style={{ fontSize: "12px" }}
+            tick={{ fill: axisColors.label, fontSize: 12 }}
             tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
           />
           <YAxis
@@ -68,7 +77,7 @@ export function BudgetComparisonChart({
             tickLine={false}
             axisLine={false}
             width={70}
-            style={{ fontSize: "12px" }}
+            tick={{ fill: axisColors.label, fontSize: 12 }}
           />
           <ChartTooltip
             content={
@@ -85,7 +94,7 @@ export function BudgetComparisonChart({
           />
           <Bar
             dataKey="budget"
-            fill="hsl(217 91% 60%)"
+            fill={chartColors.blue}
             radius={[0, 4, 4, 0]}
             barSize={12}
             name="budget"
@@ -99,7 +108,7 @@ export function BudgetComparisonChart({
             {data.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={entry.variance > 0 ? "hsl(0 84% 60%)" : "hsl(152 73% 55%)"}
+                fill={entry.variance > 0 ? financialColors.loss : financialColors.profit}
               />
             ))}
           </Bar>
@@ -108,12 +117,12 @@ export function BudgetComparisonChart({
       </ChartContainer>
       <div className="flex flex-wrap justify-center gap-4 mt-2 text-xs">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-emerald-500" />
-          <span className="text-text-muted">Under Budget</span>
+          <div className="w-3 h-3 rounded" style={{ backgroundColor: financialColors.profit }} />
+          <span className="text-gray-500 dark:text-gray-400">Under Budget</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-red-500" />
-          <span className="text-text-muted">Over Budget</span>
+          <div className="w-3 h-3 rounded" style={{ backgroundColor: financialColors.loss }} />
+          <span className="text-gray-500 dark:text-gray-400">Over Budget</span>
         </div>
       </div>
     </ChartCard>

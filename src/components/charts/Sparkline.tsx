@@ -1,7 +1,9 @@
 "use client";
 
 import { LineChart, Line, AreaChart, Area, ResponsiveContainer } from "recharts";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { CHART_COLORS, CHART_COLORS_DARK, FINANCIAL_COLORS, FINANCIAL_COLORS_DARK } from "@/lib/chart-colors";
 
 interface SparklineProps {
   data: number[];
@@ -13,29 +15,6 @@ interface SparklineProps {
   showDot?: boolean;
 }
 
-const colorMap = {
-  green: {
-    stroke: "hsl(152 73% 55%)",
-    fill: "hsl(152 73% 55%)",
-  },
-  red: {
-    stroke: "hsl(0 84% 60%)",
-    fill: "hsl(0 84% 60%)",
-  },
-  blue: {
-    stroke: "hsl(217 91% 60%)",
-    fill: "hsl(217 91% 60%)",
-  },
-  purple: {
-    stroke: "hsl(271 91% 65%)",
-    fill: "hsl(271 91% 65%)",
-  },
-  amber: {
-    stroke: "hsl(38 92% 50%)",
-    fill: "hsl(38 92% 50%)",
-  },
-};
-
 export function Sparkline({
   data,
   type = "line",
@@ -45,6 +24,35 @@ export function Sparkline({
   className,
   showDot = false,
 }: SparklineProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const chartColors = isDark ? CHART_COLORS_DARK : CHART_COLORS;
+  const financialColors = isDark ? FINANCIAL_COLORS_DARK : FINANCIAL_COLORS;
+
+  // Map color names to actual colors from our unified system
+  const colorMap = {
+    green: {
+      stroke: financialColors.profit,
+      fill: financialColors.profit,
+    },
+    red: {
+      stroke: financialColors.loss,
+      fill: financialColors.loss,
+    },
+    blue: {
+      stroke: chartColors.blue,
+      fill: chartColors.blue,
+    },
+    purple: {
+      stroke: chartColors.violet,
+      fill: chartColors.violet,
+    },
+    amber: {
+      stroke: chartColors.amber,
+      fill: chartColors.amber,
+    },
+  };
+
   const chartData = data.map((value, index) => ({ value, index }));
   const colors = colorMap[color];
   const isPositive = data[data.length - 1] >= data[0];
@@ -119,10 +127,10 @@ export function SparklineKPICard({
     <div className="card card-hover p-5">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="text-sm font-medium text-text-muted uppercase tracking-wide">
+          <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
             {title}
           </p>
-          <h3 className="text-2xl font-bold text-navy-dark mt-1">{value}</h3>
+          <h3 className="text-2xl font-bold text-navy-dark dark:text-white mt-1">{value}</h3>
         </div>
         <Sparkline
           data={sparklineData}
@@ -137,13 +145,13 @@ export function SparklineKPICard({
           className={cn(
             "text-xs font-semibold px-2 py-0.5 rounded-full",
             isPositive
-              ? "bg-emerald-100 text-emerald-600"
-              : "bg-red-100 text-red-600"
+              ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+              : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
           )}
         >
           {isPositive ? "+" : ""}{change}%
         </span>
-        <span className="text-xs text-text-muted">{period}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{period}</span>
       </div>
     </div>
   );

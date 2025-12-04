@@ -7,6 +7,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
+import { useTheme } from "next-themes";
 import { ChartCard } from "./ChartCard";
 import {
   ChartContainer,
@@ -15,27 +16,35 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
+import { CHART_COLORS, CHART_COLORS_DARK, FINANCIAL_COLORS, FINANCIAL_COLORS_DARK, CHART_AXIS_COLORS } from "@/lib/chart-colors";
 
 interface RevenueChartProps {
   data: Array<{ month: string; revenue: number; expenses: number; profit: number }>;
 }
 
+// Chart config uses CSS variables for theme support
 const chartConfig = {
   revenue: {
     label: "Revenue",
-    color: "hsl(271 91% 65%)", // Purple
+    color: "var(--chart-4)", // Violet
   },
   expenses: {
     label: "Expenses",
-    color: "hsl(0 84% 60%)", // Red
+    color: "var(--chart-2)", // Rose
   },
   profit: {
     label: "Profit",
-    color: "hsl(152 73% 55%)", // Green
+    color: "var(--chart-3)", // Emerald
   },
 };
 
 export function RevenueChart({ data }: RevenueChartProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const chartColors = isDark ? CHART_COLORS_DARK : CHART_COLORS;
+  const financialColors = isDark ? FINANCIAL_COLORS_DARK : FINANCIAL_COLORS;
+  const axisColors = isDark ? CHART_AXIS_COLORS.dark : CHART_AXIS_COLORS.light;
+
   return (
     <ChartCard
       title="Revenue & Expenses"
@@ -45,36 +54,36 @@ export function RevenueChart({ data }: RevenueChartProps) {
         <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(271 91% 65%)" stopOpacity={0.35} />
-              <stop offset="95%" stopColor="hsl(271 91% 65%)" stopOpacity={0.02} />
+              <stop offset="5%" stopColor={chartColors.violet} stopOpacity={0.35} />
+              <stop offset="95%" stopColor={chartColors.violet} stopOpacity={0.02} />
             </linearGradient>
             <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(0 84% 60%)" stopOpacity={0.35} />
-              <stop offset="95%" stopColor="hsl(0 84% 60%)" stopOpacity={0.02} />
+              <stop offset="5%" stopColor={financialColors.expenses} stopOpacity={0.35} />
+              <stop offset="95%" stopColor={financialColors.expenses} stopOpacity={0.02} />
             </linearGradient>
             <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(152 73% 55%)" stopOpacity={0.35} />
-              <stop offset="95%" stopColor="hsl(152 73% 55%)" stopOpacity={0.02} />
+              <stop offset="5%" stopColor={financialColors.profit} stopOpacity={0.35} />
+              <stop offset="95%" stopColor={financialColors.profit} stopOpacity={0.02} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={axisColors.grid} strokeOpacity={axisColors.gridOpacity} />
           <XAxis
             dataKey="month"
             tickLine={false}
             axisLine={false}
-            style={{ fontSize: "12px" }}
+            tick={{ fill: axisColors.label, fontSize: 12 }}
           />
           <YAxis
             tickLine={false}
             axisLine={false}
             width={60}
-            style={{ fontSize: "12px" }}
+            tick={{ fill: axisColors.label, fontSize: 12 }}
             tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
           />
           <ChartTooltip
             content={
               <ChartTooltipContent
-                formatter={(value, name) => {
+                formatter={(value) => {
                   const numValue = typeof value === 'number' ? value : parseFloat(String(value));
                   const formattedValue = `$${numValue.toLocaleString('en-US', {
                     minimumFractionDigits: 0,
@@ -88,21 +97,21 @@ export function RevenueChart({ data }: RevenueChartProps) {
           <Area
             type="monotone"
             dataKey="revenue"
-            stroke="hsl(271 91% 65%)"
+            stroke={chartColors.violet}
             strokeWidth={2}
             fill="url(#colorRevenue)"
           />
           <Area
             type="monotone"
             dataKey="expenses"
-            stroke="hsl(0 84% 60%)"
+            stroke={financialColors.expenses}
             strokeWidth={2}
             fill="url(#colorExpenses)"
           />
           <Area
             type="monotone"
             dataKey="profit"
-            stroke="hsl(152 73% 55%)"
+            stroke={financialColors.profit}
             strokeWidth={2}
             fill="url(#colorProfit)"
           />

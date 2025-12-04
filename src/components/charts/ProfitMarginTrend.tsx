@@ -10,13 +10,20 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
+import { useTheme } from "next-themes";
 import { ChartCard } from "./ChartCard";
+import { CHART_COLORS, CHART_COLORS_DARK, CHART_AXIS_COLORS } from "@/lib/chart-colors";
 
 interface ProfitMarginTrendProps {
   data: Array<{ quarter: string; margin: number }>;
 }
 
 export function ProfitMarginTrend({ data }: ProfitMarginTrendProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const chartColors = isDark ? CHART_COLORS_DARK : CHART_COLORS;
+  const axisColors = isDark ? CHART_AXIS_COLORS.dark : CHART_AXIS_COLORS.light;
+
   const avgMargin = data.reduce((sum, d) => sum + d.margin, 0) / data.length;
 
   return (
@@ -31,43 +38,46 @@ export function ProfitMarginTrend({ data }: ProfitMarginTrendProps) {
         >
           <defs>
             <linearGradient id="marginGradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#7C3AED" />
-              <stop offset="50%" stopColor="#EC4899" />
-              <stop offset="100%" stopColor="#EF4444" />
+              <stop offset="0%" stopColor={chartColors.violet} />
+              <stop offset="50%" stopColor={chartColors.pink} />
+              <stop offset="100%" stopColor={chartColors.rose} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <CartesianGrid strokeDasharray="3 3" stroke={axisColors.grid} strokeOpacity={axisColors.gridOpacity} vertical={false} />
           <XAxis
             dataKey="quarter"
-            stroke="#9ca3af"
-            style={{ fontSize: "12px" }}
+            tick={{ fill: axisColors.label, fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
           />
           <YAxis
-            stroke="#9ca3af"
-            style={{ fontSize: "12px" }}
+            tick={{ fill: axisColors.label, fontSize: 12 }}
+            axisLine={false}
+            tickLine={false}
             tickFormatter={(value) => `${value}%`}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "white",
-              border: "1px solid #e5e7eb",
+              backgroundColor: isDark ? "#1E293B" : "white",
+              border: `1px solid ${isDark ? "#334155" : "#e5e7eb"}`,
               borderRadius: "8px",
               boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              color: isDark ? "#F9FAFB" : "#1E1A2A",
             }}
             formatter={(value: number) => [`${value}%`, "Margin"]}
           />
           <ReferenceLine
             y={avgMargin}
-            stroke="#9ca3af"
+            stroke={axisColors.label}
             strokeDasharray="5 5"
-            label={{ value: `Avg: ${avgMargin.toFixed(1)}%`, position: "right" }}
+            label={{ value: `Avg: ${avgMargin.toFixed(1)}%`, position: "right", fill: axisColors.label }}
           />
           <Line
             type="monotone"
             dataKey="margin"
             stroke="url(#marginGradient)"
             strokeWidth={3}
-            dot={{ fill: "#7C3AED", r: 6, strokeWidth: 2, stroke: "#fff" }}
+            dot={{ fill: chartColors.violet, r: 6, strokeWidth: 2, stroke: isDark ? "#1E293B" : "#fff" }}
             activeDot={{ r: 8 }}
           />
         </LineChart>
