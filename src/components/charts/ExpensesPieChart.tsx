@@ -2,27 +2,15 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Sector } from "recharts";
 import { useState, useCallback } from "react";
+import { useTheme } from "next-themes";
 import { ChartCard } from "./ChartCard";
 import { formatCurrency, cn } from "@/lib/utils";
+import { CHART_COLOR_SEQUENCE, CHART_COLOR_SEQUENCE_DARK } from "@/lib/chart-colors";
 
 interface ExpensesPieChartProps {
   data: Array<{ category: string; amount: number; percentage: number }>;
   onCategoryClick?: (category: string) => void;
 }
-
-// Tremor-inspired color palette
-const COLORS = [
-  "#6366f1", // Indigo
-  "#8b5cf6", // Violet
-  "#ec4899", // Pink
-  "#f43f5e", // Rose
-  "#f97316", // Orange
-  "#eab308", // Yellow
-  "#22c55e", // Green
-  "#14b8a6", // Teal
-  "#06b6d4", // Cyan
-  "#3b82f6", // Blue
-];
 
 // Custom tooltip
 function CustomTooltip({ active, payload }: any) {
@@ -76,6 +64,9 @@ const renderActiveShape = (props: any) => {
 
 export function ExpensesPieChart({ data, onCategoryClick }: ExpensesPieChartProps) {
   const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const colors = isDark ? CHART_COLOR_SEQUENCE_DARK : CHART_COLOR_SEQUENCE;
 
   // Calculate total for center display
   const total = data.reduce((sum, item) => sum + item.amount, 0);
@@ -124,7 +115,7 @@ export function ExpensesPieChart({ data, onCategoryClick }: ExpensesPieChartProp
                 {data.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
+                    fill={colors[index % colors.length]}
                     className="transition-opacity"
                     style={{
                       opacity: activeIndex === undefined || activeIndex === index ? 1 : 0.5,
@@ -148,15 +139,15 @@ export function ExpensesPieChart({ data, onCategoryClick }: ExpensesPieChartProp
         <div className="w-full lg:w-1/2 space-y-2">
           {sortedData.map((item) => {
             const originalIndex = data.findIndex(d => d.category === item.category);
-            const color = COLORS[originalIndex % COLORS.length];
+            const color = colors[originalIndex % colors.length];
 
             return (
               <div
                 key={item.category}
                 className={cn(
                   "flex items-center justify-between p-2 rounded-lg transition-colors",
-                  onCategoryClick ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" : "cursor-default",
-                  activeIndex === originalIndex && "bg-gray-50 dark:bg-gray-800"
+                  onCategoryClick ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700" : "cursor-default",
+                  activeIndex === originalIndex && "bg-gray-50 dark:bg-slate-800"
                 )}
                 onMouseEnter={() => setActiveIndex(originalIndex)}
                 onMouseLeave={() => setActiveIndex(undefined)}

@@ -11,7 +11,9 @@ import {
   Cell,
   ReferenceLine,
 } from "recharts";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
+import { FINANCIAL_COLORS, FINANCIAL_COLORS_DARK, CHART_COLORS } from "@/lib/chart-colors";
 
 interface WaterfallDataPoint {
   name: string;
@@ -105,13 +107,7 @@ function transformToSimpleWaterfall(
   return result;
 }
 
-// Colors
-const COLORS = {
-  positive: "#10b981", // winning-green
-  negative: "#ef4444", // loss-red
-  total: "#8AB2B5", // teal
-  start: "#6b7280", // gray
-};
+// Colors are now imported from chart-colors.ts and used dynamically based on theme
 
 interface CustomTooltipProps {
   active?: boolean;
@@ -160,6 +156,9 @@ export function CashFlowWaterfallChart({
   showLabels = true,
   height = 350,
 }: CashFlowWaterfallProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const colors = isDark ? FINANCIAL_COLORS_DARK : FINANCIAL_COLORS;
   const waterfallData = transformToSimpleWaterfall(data);
 
   if (waterfallData.length === 0) {
@@ -177,7 +176,7 @@ export function CashFlowWaterfallChart({
   const padding = (maxValue - minValue) * 0.1;
 
   return (
-    <div className={cn("bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-800", className)}>
+    <div className={cn("bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700", className)}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="text-lg font-semibold text-navy-dark dark:text-white">
@@ -189,15 +188,15 @@ export function CashFlowWaterfallChart({
         </div>
         <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-winning-green" />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: colors.profit }} />
             <span className="text-gray-600 dark:text-gray-400">Positive</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-loss-red" />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: colors.loss }} />
             <span className="text-gray-600 dark:text-gray-400">Negative</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-teal" />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: CHART_COLORS.teal }} />
             <span className="text-gray-600 dark:text-gray-400">Total</span>
           </div>
         </div>
@@ -247,10 +246,10 @@ export function CashFlowWaterfallChart({
                 key={`cell-${index}`}
                 fill={
                   entry.isTotal
-                    ? COLORS.total
+                    ? CHART_COLORS.teal
                     : entry.value >= 0
-                      ? COLORS.positive
-                      : COLORS.negative
+                      ? colors.profit
+                      : colors.loss
                 }
               />
             ))}

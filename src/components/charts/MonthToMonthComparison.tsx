@@ -10,25 +10,20 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { useTheme } from "next-themes";
 import { ChartCard } from "./ChartCard";
 import { formatCurrency, cn } from "@/lib/utils";
+import { FINANCIAL_COLORS, FINANCIAL_COLORS_DARK, CHART_AXIS_COLORS } from "@/lib/chart-colors";
 
 interface MonthToMonthComparisonProps {
   data: Array<{ month: string; revenue: number; expenses: number }>;
 }
 
-// Tremor-inspired colors
-const colors = {
-  revenue: "#6366f1", // Indigo
-  expenses: "#f43f5e", // Rose
-  profit: "#10b981", // Emerald
-  profitNegative: "#ef4444", // Red
-};
-
 // Custom Legend
-function ChartLegend() {
+function ChartLegend({ isDark = false }: { isDark?: boolean }) {
+  const colors = isDark ? FINANCIAL_COLORS_DARK : FINANCIAL_COLORS;
   const items = [
-    { name: "Revenue", color: colors.revenue },
+    { name: "Revenue", color: colors.income },
     { name: "Expenses", color: colors.expenses },
     { name: "Profit", color: colors.profit },
   ];
@@ -50,8 +45,8 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload) return null;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg ring-1 ring-gray-200 dark:ring-gray-800 p-3 text-sm min-w-[160px]">
-      <p className="font-medium text-gray-900 dark:text-gray-50 mb-2 pb-2 border-b border-gray-100 dark:border-gray-800">
+    <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg ring-1 ring-gray-200 dark:ring-slate-700 p-3 text-sm min-w-[160px]">
+      <p className="font-medium text-gray-900 dark:text-gray-50 mb-2 pb-2 border-b border-gray-100 dark:border-slate-700">
         {label}
       </p>
       {payload.map((entry: any, index: number) => (
@@ -78,6 +73,11 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export function MonthToMonthComparison({ data }: MonthToMonthComparisonProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const colors = isDark ? FINANCIAL_COLORS_DARK : FINANCIAL_COLORS;
+  const axisColors = isDark ? CHART_AXIS_COLORS.dark : CHART_AXIS_COLORS.light;
+
   // Calculate month-over-month changes with last 6 months
   const comparisonData = data.slice(-6).map((item, index, arr) => {
     const prevMonth = index > 0 ? arr[index - 1] : null;
@@ -113,10 +113,10 @@ export function MonthToMonthComparison({ data }: MonthToMonthComparisonProps) {
     >
       {/* Summary Stats */}
       {comparisonData.length > 1 && latestData && (
-        <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">
+        <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-gray-100 dark:border-slate-700">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: colors.revenue }} />
+              <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: colors.income }} />
               <span className="text-sm text-gray-500 dark:text-gray-400">Revenue Change</span>
             </div>
             <div className="flex items-baseline gap-2">
@@ -170,29 +170,29 @@ export function MonthToMonthComparison({ data }: MonthToMonthComparisonProps) {
         >
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke="#e5e7eb"
-            strokeOpacity={0.5}
+            stroke={axisColors.grid}
+            strokeOpacity={axisColors.gridOpacity}
             vertical={false}
           />
           <XAxis
             dataKey="month"
-            tick={{ fill: "#9ca3af", fontSize: 12 }}
+            tick={{ fill: axisColors.label, fontSize: 12 }}
             axisLine={false}
             tickLine={false}
             dy={10}
           />
           <YAxis
-            tick={{ fill: "#9ca3af", fontSize: 12 }}
+            tick={{ fill: axisColors.label, fontSize: 12 }}
             axisLine={false}
             tickLine={false}
             width={65}
             tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(0, 0, 0, 0.05)" }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)" }} />
           <Bar
             dataKey="revenue"
             name="Revenue"
-            fill={colors.revenue}
+            fill={colors.income}
             radius={[4, 4, 0, 0]}
             maxBarSize={28}
           />
@@ -212,13 +212,13 @@ export function MonthToMonthComparison({ data }: MonthToMonthComparisonProps) {
             {comparisonData.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={entry.profit >= 0 ? colors.profit : colors.profitNegative}
+                fill={entry.profit >= 0 ? colors.profit : colors.loss}
               />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
-      <ChartLegend />
+      <ChartLegend isDark={isDark} />
     </ChartCard>
   );
 }
