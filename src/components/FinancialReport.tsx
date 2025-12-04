@@ -7,35 +7,17 @@ import {
   View,
   StyleSheet,
   pdf,
-  Font,
 } from "@react-pdf/renderer";
 import { saveAs } from "file-saver";
 import type { MonthlyData, CategoryData, CashFlowData } from "@/lib/supabase/types";
 
-// Register fonts (using system fonts for now)
-Font.register({
-  family: "Inter",
-  fonts: [
-    {
-      src: "https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hjp-Ek-_EeA.woff2",
-      fontWeight: 400,
-    },
-    {
-      src: "https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hjp-Ek-_EeA.woff2",
-      fontWeight: 600,
-    },
-    {
-      src: "https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYAZ9hjp-Ek-_EeA.woff2",
-      fontWeight: 700,
-    },
-  ],
-});
+// Using Helvetica (built-in PDF font) to avoid font loading issues
 
 // Styles
 const styles = StyleSheet.create({
   page: {
     padding: 40,
-    fontFamily: "Inter",
+    fontFamily: "Helvetica",
     fontSize: 10,
     color: "#1E1A2A",
   },
@@ -50,7 +32,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     fontSize: 20,
-    fontWeight: 700,
+    fontFamily: "Helvetica-Bold",
     color: "#1E1A2A",
   },
   logoAccent: {
@@ -72,7 +54,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: 700,
+    fontFamily: "Helvetica-Bold",
     color: "#1E1A2A",
     marginBottom: 12,
     paddingBottom: 6,
@@ -100,7 +82,7 @@ const styles = StyleSheet.create({
   },
   kpiValue: {
     fontSize: 18,
-    fontWeight: 700,
+    fontFamily: "Helvetica-Bold",
     color: "#1E1A2A",
     marginTop: 4,
   },
@@ -126,7 +108,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 4,
   },
   tableHeaderCell: {
-    fontWeight: 600,
+    fontFamily: "Helvetica-Bold",
     fontSize: 9,
     color: "#6b7280",
     textTransform: "uppercase",
@@ -158,7 +140,7 @@ const styles = StyleSheet.create({
   },
   summaryTitle: {
     fontSize: 11,
-    fontWeight: 600,
+    fontFamily: "Helvetica-Bold",
     color: "#166534",
     marginBottom: 8,
   },
@@ -243,7 +225,7 @@ const styles = StyleSheet.create({
   },
   categoryAmount: {
     fontSize: 10,
-    fontWeight: 600,
+    fontFamily: "Helvetica-Bold",
     color: "#1E1A2A",
   },
   categoryPercent: {
@@ -326,7 +308,7 @@ function FinancialReportDocument({
 
         {/* Business Name */}
         <View style={{ marginBottom: 25 }}>
-          <Text style={{ fontSize: 18, fontWeight: 700, color: "#1E1A2A" }}>
+          <Text style={{ fontSize: 18, fontFamily: "Helvetica-Bold", color: "#1E1A2A" }}>
             {businessName}
           </Text>
         </View>
