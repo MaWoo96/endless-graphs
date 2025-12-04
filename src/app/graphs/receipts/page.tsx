@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Receipt,
   History,
@@ -14,10 +14,14 @@ import {
   Loader2,
   Upload,
   ExternalLink,
+  Camera,
 } from "lucide-react";
 import Link from "next/link";
+import { AnimatePresence } from "motion/react";
 import { ReceiptUpload, UploadedReceipt } from "@/components/ReceiptUpload";
+import { ReceiptCapture, MobileReceiptFAB } from "@/components/ReceiptCapture";
 import { useEntityContext } from "@/contexts/EntityContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
@@ -47,8 +51,57 @@ export default function ReceiptsPage() {
   const [isLoadingReceipts, setIsLoadingReceipts] = useState(false);
   const [activeTab, setActiveTab] = useState<"upload" | "history">("upload");
   const [transactionMap, setTransactionMap] = useState<Map<string, TransactionInfo>>(new Map());
-
+  const [showCameraCapture, setShowCameraCapture] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const isMobile = useIsMobile();
   const supabase = createClient();
+
+  // Handle camera capture
+  const handleCameraCapture = useCallback(async (file: File) => {
+    if (!selectedEntity) return;
+
+    setIsUploading(true);
+    setShowCameraCapture(false);
+
+    try {
+      // Create form data for upload
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("entityId", selectedEntity.id);
+
+      // Upload to API
+      const response = await fetch("/api/receipts/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const result = await response.json();
+
+      // Add to receipts list
+      if (result.receipt) {
+        setReceipts((prev) => [
+          {
+            ...result.receipt,
+            created_at: new Date().toISOString(),
+          } as StoredReceipt,
+          ...prev,
+        ]);
+      }
+
+      // Switch to history tab to show the new receipt
+      setActiveTab("history");
+    } catch (err) {
+      console.error("Upload error:", err);
+      // Could show a toast notification here
+    } finally {
+      setIsUploading(false);
+    }
+  }, [selectedEntity]);
 
   // Load receipts when entity changes
   useEffect(() => {
@@ -408,6 +461,34 @@ export default function ReceiptsPage() {
           </div>
         )}
       </main>
+
+      {/* Mobile Camera FAB */}
+      {isMobile && selectedEntity && !showCameraCapture && (
+        <MobileReceiptFAB onClick={() => setShowCameraCapture(true)} />
+      )}
+
+      {/* Camera Capture Modal */}
+      <AnimatePresence>
+        {showCameraCapture && (
+          <ReceiptCapture
+            onCapture={handleCameraCapture}
+            onClose={() => setShowCameraCapture(false)}
+            maxSizeKB={500}
+            quality={0.8}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Upload Progress Overlay */}
+      {isUploading && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 text-teal animate-spin" />
+            <p className="text-gray-900 dark:text-white font-medium">Uploading receipt...</p>
+            <p className="text-sm text-gray-500">Processing and matching</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

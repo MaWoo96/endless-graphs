@@ -44,9 +44,12 @@ import {
   ScanLine,
   Link2,
   Image as ImageIcon,
+  Filter,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Transaction } from "@/lib/supabase/types";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { TransactionCardList } from "./TransactionCard";
 import {
   getCategoryEmoji,
   getRelativeTime,
@@ -1123,6 +1126,9 @@ export function TransactionTable({
   const tableRef = useRef<HTMLDivElement>(null);
   const pageSize = 50;
   const supabase = createClient();
+  
+  // Mobile detection for adaptive rendering
+  const isMobile = useIsMobile();
 
   // Keep local state in sync with props
   useEffect(() => {
@@ -1467,6 +1473,172 @@ export function TransactionTable({
     );
   }
 
+  // Mobile flag/approve handlers for swipe actions
+  const handleMobileFlag = useCallback(async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("transactions")
+        .update({
+          review_status: "flagged",
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setLocalTransactions((prev) =>
+          prev.map((tx) => (tx.id === id ? (data as Transaction) : tx))
+        );
+      }
+    } catch (err) {
+      console.error("Failed to flag transaction:", err);
+    }
+  }, [supabase]);
+
+  const handleMobileApprove = useCallback(async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("transactions")
+        .update({
+          review_status: "approved",
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setLocalTransactions((prev) =>
+          prev.map((tx) => (tx.id === id ? (data as Transaction) : tx))
+        );
+      }
+    } catch (err) {
+      console.error("Failed to approve transaction:", err);
+    }
+  }, [supabase]);
+
+  // Mobile-optimized view
+  if (isMobile) {
+    return (
+      <>
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          {/* Mobile Header - Compact search and stats */}
+          <div className="p-3 border-b border-gray-200 dark:border-gray-800 space-y-3">
+            {/* Search bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search transactions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 text-base bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal/50 focus:border-teal"
+              />
+            </div>
+
+            {/* Filter badge and stats row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {categoryFilter && (
+                  <Badge className="bg-teal/10 text-teal border-teal/20 gap-1 text-xs">
+                    <Tag className="h-3 w-3" />
+                    {categoryFilter}
+                    <button
+                      onClick={onClearFilter}
+                      className="ml-0.5 hover:bg-teal/20 rounded-full p-0.5"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )}
+                <span className="text-xs text-gray-500">
+                  {filteredTransactions.length} items
+                </span>
+              </div>
+              
+              {/* Compact stats */}
+              <div className="flex items-center gap-3 text-xs">
+                <span className="text-winning-green font-semibold">
+                  +{formatCurrency(totals.income)}
+                </span>
+                <span className="text-loss-red font-semibold">
+                  -{formatCurrency(totals.expenses)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Transaction Card List */}
+          <TransactionCardList
+            transactions={paginatedTransactions}
+            onSelect={setSelectedTransaction}
+            onFlag={handleMobileFlag}
+            onApprove={handleMobileApprove}
+            receiptsMap={receiptsMap}
+            selectedIds={selectedIds}
+            isLoading={isLoading}
+          />
+
+          {/* Mobile Pagination */}
+          {totalPages > 1 && (
+            <div className="p-3 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-800 disabled:opacity-50 active:bg-gray-200 dark:active:bg-gray-700"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Prev
+              </button>
+              <span className="text-sm text-gray-500">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-gray-100 dark:bg-gray-800 disabled:opacity-50 active:bg-gray-200 dark:active:bg-gray-700"
+              >
+                Next
+                <ChevronRightIcon className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Mobile swipe hint */}
+          <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-400 text-center">
+            Swipe left to flag • Swipe right to approve • Tap for details
+          </div>
+        </div>
+
+        {/* Transaction Detail Drawer - Mobile optimized */}
+        <Drawer.Root
+          open={selectedTransaction !== null}
+          onOpenChange={(open) => !open && setSelectedTransaction(null)}
+        >
+          <Drawer.Portal>
+            <Drawer.Overlay className="fixed inset-0 bg-black/40 z-50" />
+            <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex h-[90vh] flex-col rounded-t-2xl bg-white dark:bg-gray-900">
+              <div className="mx-auto mt-4 h-1.5 w-12 flex-shrink-0 rounded-full bg-gray-300 dark:bg-gray-700" />
+              {selectedTransaction && (
+                <TransactionDetailContent
+                  transaction={selectedTransaction}
+                  onUpdate={handleTransactionUpdate}
+                  receipts={receiptsMap?.get(selectedTransaction.id)}
+                />
+              )}
+            </Drawer.Content>
+          </Drawer.Portal>
+        </Drawer.Root>
+      </>
+    );
+  }
+
+  // Desktop view (original)
   return (
     <>
       <div

@@ -3,12 +3,7 @@
 import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { ExpensesPieChart } from "@/components/charts/ExpensesPieChart";
-import { KPICard } from "@/components/charts/KPICard";
-import { EnhancedKPICard, KPIGrid } from "@/components/charts/EnhancedKPICard";
-import { IncomeVsExpensesChart } from "@/components/charts/IncomeVsExpensesChart";
-import { MonthToMonthComparison } from "@/components/charts/MonthToMonthComparison";
-import { CashFlowWaterfallChart } from "@/components/charts/WaterfallChart";
+import dynamic from "next/dynamic";
 import { ChartErrorBoundary, ErrorBoundary } from "@/components/ErrorBoundary";
 import { TransactionTable } from "@/components/TransactionTable";
 import {
@@ -21,7 +16,53 @@ import { useClientData, useAggregatedData, useAccounts } from "@/hooks/useClient
 import { useEntityContext } from "@/contexts/EntityContext";
 import { AccountFilterPills } from "@/components/AccountFilterPills";
 import { createClient } from "@/lib/supabase/client";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Transaction } from "@/lib/supabase/types";
+
+// Chart loading skeleton for lazy-loaded components
+function ChartSkeleton({ height = "h-64" }: { height?: string }) {
+  return (
+    <div className={`${height} bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse flex items-center justify-center`}>
+      <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+    </div>
+  );
+}
+
+// Lazy load heavy chart components for better mobile performance
+const ExpensesPieChart = dynamic(
+  () => import("@/components/charts/ExpensesPieChart").then(mod => ({ default: mod.ExpensesPieChart })),
+  { loading: () => <ChartSkeleton height="h-80" />, ssr: false }
+);
+
+const KPICard = dynamic(
+  () => import("@/components/charts/KPICard").then(mod => ({ default: mod.KPICard })),
+  { loading: () => <ChartSkeleton height="h-32" />, ssr: false }
+);
+
+const EnhancedKPICard = dynamic(
+  () => import("@/components/charts/EnhancedKPICard").then(mod => ({ default: mod.EnhancedKPICard })),
+  { loading: () => <ChartSkeleton height="h-36" />, ssr: false }
+);
+
+const KPIGrid = dynamic(
+  () => import("@/components/charts/EnhancedKPICard").then(mod => ({ default: mod.KPIGrid })),
+  { ssr: false }
+);
+
+const IncomeVsExpensesChart = dynamic(
+  () => import("@/components/charts/IncomeVsExpensesChart").then(mod => ({ default: mod.IncomeVsExpensesChart })),
+  { loading: () => <ChartSkeleton height="h-80" />, ssr: false }
+);
+
+const MonthToMonthComparison = dynamic(
+  () => import("@/components/charts/MonthToMonthComparison").then(mod => ({ default: mod.MonthToMonthComparison })),
+  { loading: () => <ChartSkeleton height="h-80" />, ssr: false }
+);
+
+const CashFlowWaterfallChart = dynamic(
+  () => import("@/components/charts/WaterfallChart").then(mod => ({ default: mod.CashFlowWaterfallChart })),
+  { loading: () => <ChartSkeleton height="h-80" />, ssr: false }
+);
 
 // Receipt type for linking
 interface LinkedReceipt {
@@ -163,6 +204,9 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const activeTab = searchParams.get("tab") || "dashboard";
+  
+  // Mobile detection for adaptive layouts
+  const isMobile = useIsMobile();
 
   // Fetch ALL transactions once (last 12 months as max range)
   const maxDateRange = useMemo(() => getDateRangeFromOption("12m"), []);
@@ -388,7 +432,7 @@ function HomeContent() {
 
       {/* Main Content with Tab Transitions */}
       {!isLoading && !entityLoading && (
-        <main className="px-6 py-6">
+        <main className="px-3 py-4 md:px-6 md:py-6">
           <AnimatePresence mode="wait">
             {/* Dashboard View */}
             {activeTab === "dashboard" && (
@@ -401,18 +445,20 @@ function HomeContent() {
                 transition={tabTransition}
               >
               {/* KPI Metrics Grid - Enhanced with sparklines */}
-              <section className="mb-8">
-                <div className="flex items-center justify-between mb-4">
+              <section className="mb-6 md:mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div>
-                    <h2 className="text-xl font-semibold text-navy-dark dark:text-white">Key Performance Indicators</h2>
-                    {hasRealData && (
+                    <h2 className="text-lg sm:text-xl font-semibold text-navy-dark dark:text-white">
+                      {isMobile ? "Key Metrics" : "Key Performance Indicators"}
+                    </h2>
+                    {hasRealData && !isMobile && (
                       <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {kpiTransactions.length} transactions • {kpiDateRange.startDate.toLocaleDateString()} - {kpiDateRange.endDate.toLocaleDateString()}
                       </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    {hasRealData && (
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    {hasRealData && !isMobile && (
                       <button
                         disabled
                         className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 font-medium rounded-lg cursor-not-allowed"
@@ -427,23 +473,23 @@ function HomeContent() {
                       value={kpiDateOption}
                       onChange={setKpiDateOption}
                       readOnly={false}
-                      showPeriodPresets={true}
+                      showPeriodPresets={!isMobile}
                     />
                   </div>
                 </div>
 
-                {/* Enhanced KPI Cards with Sparklines */}
+                {/* Enhanced KPI Cards with Sparklines - 2 columns on mobile, 4 on desktop */}
                 {hasRealData ? (
-                  <KPIGrid columns={4}>
+                  <KPIGrid columns={isMobile ? 2 : 4}>
                     <ErrorBoundary>
                       <EnhancedKPICard
-                        title="Gross Income"
+                        title={isMobile ? "Income" : "Gross Income"}
                         value={kpiAggregatedData.kpiMetrics.totalRevenue}
                         previousValue={kpiAggregatedData.previousPeriod.totalRevenue}
                         prefix="$"
                         trend="up"
-                        period={periodLabel}
-                        sparklineData={kpiAggregatedData.sparklines.revenue}
+                        period={isMobile ? "" : periodLabel}
+                        sparklineData={isMobile ? undefined : kpiAggregatedData.sparklines.revenue}
                         icon="dollar"
                         format="currency"
                         accentColor="green"
@@ -451,13 +497,13 @@ function HomeContent() {
                     </ErrorBoundary>
                     <ErrorBoundary>
                       <EnhancedKPICard
-                        title="Gross Expenses"
+                        title={isMobile ? "Expenses" : "Gross Expenses"}
                         value={kpiAggregatedData.kpiMetrics.totalExpenses}
                         previousValue={kpiAggregatedData.previousPeriod.totalExpenses}
                         prefix="$"
                         trend="down"
-                        period={periodLabel}
-                        sparklineData={kpiAggregatedData.sparklines.expenses}
+                        period={isMobile ? "" : periodLabel}
+                        sparklineData={isMobile ? undefined : kpiAggregatedData.sparklines.expenses}
                         icon="credit"
                         format="currency"
                         accentColor="red"
@@ -465,13 +511,13 @@ function HomeContent() {
                     </ErrorBoundary>
                     <ErrorBoundary>
                       <EnhancedKPICard
-                        title="Net Profit"
+                        title={isMobile ? "Profit" : "Net Profit"}
                         value={kpiAggregatedData.kpiMetrics.netProfit}
                         previousValue={kpiAggregatedData.previousPeriod.netProfit}
                         prefix="$"
                         trend={kpiAggregatedData.kpiMetrics.netProfit >= 0 ? "up" : "down"}
-                        period={periodLabel}
-                        sparklineData={kpiAggregatedData.sparklines.profit}
+                        period={isMobile ? "" : periodLabel}
+                        sparklineData={isMobile ? undefined : kpiAggregatedData.sparklines.profit}
                         icon="piggy"
                         format="currency"
                         accentColor={kpiAggregatedData.kpiMetrics.netProfit >= 0 ? "teal" : "red"}
@@ -479,12 +525,12 @@ function HomeContent() {
                     </ErrorBoundary>
                     <ErrorBoundary>
                       <EnhancedKPICard
-                        title="Profit Margin"
+                        title="Margin"
                         value={kpiAggregatedData.kpiMetrics.profitMargin}
                         suffix="%"
                         trend={kpiAggregatedData.kpiMetrics.profitMargin >= 0 ? "up" : "down"}
-                        period="Of revenue"
-                        sparklineData={kpiAggregatedData.sparklines.margin}
+                        period={isMobile ? "" : "Of revenue"}
+                        sparklineData={isMobile ? undefined : kpiAggregatedData.sparklines.margin}
                         icon="percent"
                         format="percent"
                         accentColor={kpiAggregatedData.kpiMetrics.profitMargin >= 0 ? "blue" : "red"}
@@ -492,7 +538,7 @@ function HomeContent() {
                     </ErrorBoundary>
                   </KPIGrid>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                     {kpiMetrics.map((metric, index) => (
                       <ErrorBoundary key={index}>
                         <KPICard {...metric} />
