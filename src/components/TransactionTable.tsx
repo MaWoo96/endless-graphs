@@ -973,7 +973,9 @@ function TransactionRow({
             {merchantName}
           </p>
           {hasReceipt && (
-            <ScanLine className="w-3 h-3 text-teal flex-shrink-0" title="Receipt attached" />
+            <span title="Receipt attached">
+              <ScanLine className="w-3 h-3 text-teal flex-shrink-0" />
+            </span>
           )}
           {hasAICategory && (
             <Sparkles className="w-3 h-3 text-purple-500 flex-shrink-0" />
