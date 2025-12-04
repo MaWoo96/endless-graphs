@@ -416,9 +416,11 @@ function BulkActionsToolbar({
 function TransactionDetailContent({
   transaction,
   onUpdate,
+  receipts,
 }: {
   transaction: Transaction;
   onUpdate?: (updated: Transaction) => void;
+  receipts?: LinkedReceipt[];
 }) {
   const [locationExpanded, setLocationExpanded] = useState(false);
   const [paymentExpanded, setPaymentExpanded] = useState(false);
@@ -780,6 +782,60 @@ function TransactionDetailContent({
           </div>
         )}
 
+        {/* Receipts Section */}
+        {receipts && receipts.length > 0 && (
+          <div className="bg-teal/5 border border-teal/20 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <ScanLine className="w-4 h-4 text-teal" />
+              <h4 className="text-sm font-semibold text-teal">
+                {receipts.length === 1 ? "Attached Receipt" : `${receipts.length} Attached Receipts`}
+              </h4>
+            </div>
+            <div className="space-y-3">
+              {receipts.map((receipt) => (
+                <div
+                  key={receipt.id}
+                  className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {receipt.vendor || "Unknown Vendor"}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {receipt.date || "No date"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        {receipt.amount ? `$${receipt.amount.toFixed(2)}` : "-"}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        OCR: {receipt.ocr_confidence}%
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${
+                      receipt.match_status === "auto_matched"
+                        ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
+                        : receipt.match_status === "review_required"
+                        ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                        : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                    }`}>
+                      {receipt.match_status === "auto_matched" && <CheckCircle2 className="w-3 h-3" />}
+                      {receipt.match_status === "auto_matched" ? "Auto-matched" :
+                       receipt.match_status === "review_required" ? "Review needed" :
+                       receipt.match_status}
+                      {receipt.match_confidence > 0 && ` (${receipt.match_confidence}%)`}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Review Section */}
         <div className="border-t border-gray-200 dark:border-gray-800 pt-6 mt-6">
           <div className="flex items-center justify-between mb-4">
@@ -973,8 +1029,12 @@ function TransactionRow({
             {merchantName}
           </p>
           {hasReceipt && (
-            <span title="Receipt attached">
-              <ScanLine className="w-3 h-3 text-teal flex-shrink-0" />
+            <span
+              title="Receipt attached"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-teal/10 text-teal rounded text-xs font-medium"
+            >
+              <ScanLine className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Receipt</span>
             </span>
           )}
           {hasAICategory && (
@@ -1607,6 +1667,7 @@ export function TransactionTable({
               <TransactionDetailContent
                 transaction={selectedTransaction}
                 onUpdate={handleTransactionUpdate}
+                receipts={receiptsMap?.get(selectedTransaction.id)}
               />
             )}
           </Drawer.Content>
