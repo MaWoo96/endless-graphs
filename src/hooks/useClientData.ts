@@ -64,6 +64,16 @@ export function useClientData(dateRange?: DateRange, entityId?: string | null) {
   const supabase = createClient();
 
   const fetchData = useCallback(async (page = 0, append = false) => {
+    // If entityId was explicitly passed but is null/undefined, wait for it to be set
+    // This prevents querying with entity_id=undefined during initial load
+    if (entityId === undefined || entityId === null) {
+      setState(prev => ({
+        ...prev,
+        isLoading: true, // Keep loading state while waiting for entity
+      }));
+      return;
+    }
+
     setState(prev => ({
       ...prev,
       isLoading: true,
@@ -164,10 +174,23 @@ export function useClientData(dateRange?: DateRange, entityId?: string | null) {
         const rangeStart = page * PAGE_SIZE;
         const rangeEnd = rangeStart + PAGE_SIZE - 1;
 
+        // Guard: Don't query with undefined entity_id
+        if (!entity?.id) {
+          setState({
+            client,
+            transactions: [],
+            isLoading: false,
+            error: null,
+            hasMore: false,
+            totalCount: 0,
+          });
+          return;
+        }
+
         let query = supabase
           .from("transactions")
           .select("*", { count: "exact" })
-          .eq("entity_id", entity?.id)
+          .eq("entity_id", entity.id)
           .order("date", { ascending: false })
           .range(rangeStart, rangeEnd);
 

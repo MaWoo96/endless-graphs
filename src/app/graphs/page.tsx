@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { ExpensesPieChart } from "@/components/charts/ExpensesPieChart";
 import { KPICard } from "@/components/charts/KPICard";
@@ -10,32 +11,42 @@ import { MonthToMonthComparison } from "@/components/charts/MonthToMonthComparis
 import { CashFlowWaterfallChart } from "@/components/charts/WaterfallChart";
 import { ChartErrorBoundary, ErrorBoundary } from "@/components/ErrorBoundary";
 import { TransactionTable } from "@/components/TransactionTable";
-import { EmptyState, ChartSkeleton, KPICardSkeleton } from "@/components/EmptyStates";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   expensesByCategory as mockExpensesByCategory,
 } from "@/lib/mock-data";
-import { BarChart3, LogOut, Loader2, AlertCircle, RefreshCw, ArrowLeft, LayoutDashboard, Receipt, FileDown, TrendingUp, Database, Wifi } from "lucide-react";
-import Link from "next/link";
+import { Loader2, AlertCircle, RefreshCw, FileDown, Database, Wifi } from "lucide-react";
 import { DateRangePicker, DateRangeOption } from "@/components/DateRangePicker";
 import { YearPicker } from "@/components/YearPicker";
-import { useClientData, useAggregatedData, useUser, useAccounts } from "@/hooks/useClientData";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { EntityPicker } from "@/components/EntityPicker";
+import { useClientData, useAggregatedData, useAccounts } from "@/hooks/useClientData";
 import { useEntityContext } from "@/contexts/EntityContext";
 import { AccountFilterPills } from "@/components/AccountFilterPills";
+import { createClient } from "@/lib/supabase/client";
 import type { Transaction } from "@/lib/supabase/types";
 
-// Page transition variants
-const pageVariants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 }
+// Receipt type for linking
+interface LinkedReceipt {
+  id: string;
+  vendor: string | null;
+  amount: number | null;
+  date: string | null;
+  match_status: string;
+  match_confidence: number;
+  ocr_confidence: number;
+  storage_path: string;
+  created_at: string;
+  matched_transaction_id: string | null;
+}
+
+// Tab transition variants - optimized for smooth switching
+const tabVariants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 }
 };
 
-const pageTransition = {
-  duration: 0.4,
-  ease: [0.25, 0.1, 0.25, 1] as const // easeOut cubic bezier
+const tabTransition = {
+  duration: 0.15,
+  ease: [0.25, 0.1, 0.25, 1] as const
 };
 
 // Helper to get date range from option
@@ -148,13 +159,58 @@ function filterTransactionsByYear(
 }
 
 export default function Home() {
+  // URL-based tab state
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const activeTab = searchParams.get("tab") || "dashboard";
+
   // Fetch ALL transactions once (last 12 months as max range)
   const maxDateRange = useMemo(() => getDateRangeFromOption("12m"), []);
 
-  const { user, isSigningOut, signOut } = useUser();
   const { selectedEntity, isLoading: entityLoading } = useEntityContext();
   const { client, transactions: allTransactions, isLoading, error, refetch } = useClientData(maxDateRange, selectedEntity?.id);
   const { accounts, isLoading: accountsLoading } = useAccounts(selectedEntity?.id || null);
+
+  // Fetch receipts for the selected entity to show receipt indicators on transactions
+  const [receiptsMap, setReceiptsMap] = useState<Map<string, LinkedReceipt[]>>(new Map());
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchReceipts = async () => {
+      if (!selectedEntity?.id) {
+        setReceiptsMap(new Map());
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("receipts")
+          .select("*")
+          .eq("entity_id", selectedEntity.id)
+          .not("matched_transaction_id", "is", null);
+
+        if (error) {
+          console.error("Error fetching receipts:", error);
+          return;
+        }
+
+        // Build a map of transaction_id -> receipts
+        const map = new Map<string, LinkedReceipt[]>();
+        (data || []).forEach((receipt: LinkedReceipt) => {
+          if (receipt.matched_transaction_id) {
+            const existing = map.get(receipt.matched_transaction_id) || [];
+            existing.push(receipt);
+            map.set(receipt.matched_transaction_id, existing);
+          }
+        });
+        setReceiptsMap(map);
+      } catch (err) {
+        console.error("Error fetching receipts:", err);
+      }
+    };
+
+    fetchReceipts();
+  }, [selectedEntity?.id, supabase]);
 
   // Section-specific date range states
   const [kpiDateOption, setKpiDateOption] = useState<DateRangeOption>("12m");
@@ -162,16 +218,15 @@ export default function Home() {
   const [monthComparisonYear, setMonthComparisonYear] = useState<number>(new Date().getFullYear());
   const [expensesCategoryDateOption, setExpensesCategoryDateOption] = useState<DateRangeOption>("12m");
 
-  // Tab and filter state
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
+  // Filter state
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
 
   // Handle category click from pie chart - switch to transactions tab with filter
   const handleCategoryClick = useCallback((category: string) => {
     setCategoryFilter(category);
-    setActiveTab("transactions");
-  }, []);
+    router.push("/graphs?tab=transactions");
+  }, [router]);
 
   // Clear category filter
   const handleClearFilter = useCallback(() => {
@@ -267,85 +322,50 @@ export default function Home() {
       ];
 
   return (
-    <div className="min-h-screen bg-off-white dark:bg-gray-950 transition-colors">
-      {/* Header - Glass Morphism Style */}
-      <header className="sticky top-0 z-20 border-b border-gray-200/50 dark:border-gray-800/50 glass-panel transition-colors">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/"
-                className="p-2 text-gray-500 hover:text-navy-dark dark:hover:text-white transition-colors rounded-lg glass-button"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-winning-green to-teal rounded-lg shadow-sm">
-                  <BarChart3 className="h-6 w-6 text-white" />
-                </div>
-                <EntityPicker />
-              </div>
+    <div className="min-h-full bg-off-white dark:bg-gray-950 transition-colors">
+      {/* Status Bar */}
+      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200/50 dark:border-gray-800/50">
+        <div className="flex items-center gap-4">
+          {/* Connection Status Indicators */}
+          <div className="flex items-center gap-3 px-3 py-1.5 glass-card-light rounded-full">
+            <div className="flex items-center gap-1.5" title="Database connected">
+              <span className={`w-2 h-2 rounded-full ${hasRealData ? 'bg-winning-green glow-emerald' : 'bg-gray-400'}`} />
+              <Database className="w-3.5 h-3.5 text-gray-500" />
             </div>
-            <div className="flex items-center gap-4">
-              {/* Connection Status Indicators */}
-              <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 glass-card-light rounded-full">
-                <div className="flex items-center gap-1.5" title="Database connected">
-                  <span className={`w-2 h-2 rounded-full ${hasRealData ? 'bg-winning-green glow-emerald' : 'bg-gray-400'}`} />
-                  <Database className="w-3.5 h-3.5 text-gray-500" />
-                </div>
-                <div className="h-3 w-px bg-gray-300 dark:bg-gray-600" />
-                <div className="flex items-center gap-1.5" title="Live sync">
-                  <span className={`w-2 h-2 rounded-full ${hasRealData ? 'bg-winning-green glow-emerald glow-pulse' : 'bg-gray-400'}`} />
-                  <Wifi className="w-3.5 h-3.5 text-gray-500" />
-                </div>
-              </div>
-
-              {/* Data Status Badge */}
-              {hasRealData && (
-                <span className="px-3 py-1.5 text-xs font-medium bg-winning-green/10 text-winning-green rounded-full flex items-center gap-1.5 glass-button">
-                  <span className="w-1.5 h-1.5 rounded-full bg-winning-green glow-emerald" />
-                  Live Data
-                </span>
-              )}
-              {!hasRealData && !isLoading && (
-                <span className="px-3 py-1.5 text-xs font-medium bg-warning-amber/10 text-warning-amber rounded-full flex items-center gap-1.5 glass-button">
-                  <span className="w-1.5 h-1.5 rounded-full bg-warning-amber" />
-                  Demo Data
-                </span>
-              )}
-              <ThemeToggle />
-              <button
-                onClick={refetch}
-                className="p-2 text-gray-500 hover:text-navy-dark dark:hover:text-white transition-colors glass-button rounded-lg"
-                title="Refresh data"
-              >
-                <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
-              </button>
-              {user && (
-                <div className="flex items-center gap-3 border-l border-gray-200/50 dark:border-gray-700/50 pl-4">
-                  <span className="text-sm text-gray-600 dark:text-gray-400 hidden md:inline">{user.email}</span>
-                  <button
-                    onClick={signOut}
-                    disabled={isSigningOut}
-                    className="p-2 text-gray-500 hover:text-loss-red transition-colors disabled:opacity-50 glass-button rounded-lg"
-                    title="Sign out"
-                  >
-                    {isSigningOut ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <LogOut className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-              )}
+            <div className="h-3 w-px bg-gray-300 dark:bg-gray-600" />
+            <div className="flex items-center gap-1.5" title="Live sync">
+              <span className={`w-2 h-2 rounded-full ${hasRealData ? 'bg-winning-green glow-emerald glow-pulse' : 'bg-gray-400'}`} />
+              <Wifi className="w-3.5 h-3.5 text-gray-500" />
             </div>
           </div>
+
+          {/* Data Status Badge */}
+          {hasRealData && (
+            <span className="px-3 py-1.5 text-xs font-medium bg-winning-green/10 text-winning-green rounded-full flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-winning-green glow-emerald" />
+              Live Data
+            </span>
+          )}
+          {!hasRealData && !isLoading && (
+            <span className="px-3 py-1.5 text-xs font-medium bg-warning-amber/10 text-warning-amber rounded-full flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-warning-amber" />
+              Demo Data
+            </span>
+          )}
         </div>
-      </header>
+
+        <button
+          onClick={refetch}
+          className="p-2 text-gray-500 hover:text-navy-dark dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+          title="Refresh data"
+        >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </button>
+      </div>
 
       {/* Loading State */}
       {(isLoading || entityLoading) && (
-        <div className="max-w-7xl mx-auto px-6 py-12 flex items-center justify-center">
+        <div className="flex items-center justify-center py-24">
           <div className="flex items-center gap-3 text-navy-medium dark:text-gray-300">
             <Loader2 className="h-6 w-6 animate-spin" />
             <span>Loading your financial data...</span>
@@ -355,54 +375,31 @@ export default function Home() {
 
       {/* Error State */}
       {error && !isLoading && (
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="bg-loss-red/5 dark:bg-loss-red/10 border border-loss-red/20 rounded-xl p-6 flex items-start gap-4">
-            <AlertCircle className="h-6 w-6 text-loss-red flex-shrink-0 mt-0.5" />
+        <div className="px-6 py-4">
+          <div className="bg-loss-red/5 dark:bg-loss-red/10 border border-loss-red/20 rounded-xl p-4 flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-loss-red flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-loss-red">Unable to load data</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{error}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">Showing demo data instead.</p>
+              <h3 className="font-semibold text-loss-red text-sm">Unable to load data</h3>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{error}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Content with Page Transitions */}
+      {/* Main Content with Tab Transitions */}
       {!isLoading && !entityLoading && (
-        <motion.main
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          variants={pageVariants}
-          transition={pageTransition}
-          className="max-w-7xl mx-auto px-6 py-8"
-        >
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            {/* Tab Navigation - Glass Morphism */}
-            <TabsList className="mb-6 glass-card-light p-1 rounded-lg">
-              <TabsTrigger
-                value="dashboard"
-                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm px-4 py-2 rounded-md transition-all"
+        <main className="px-6 py-6">
+          <AnimatePresence mode="wait">
+            {/* Dashboard View */}
+            {activeTab === "dashboard" && (
+              <motion.div
+                key="dashboard"
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                variants={tabVariants}
+                transition={tabTransition}
               >
-                <LayoutDashboard className="h-4 w-4" />
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger
-                value="transactions"
-                className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm px-4 py-2 rounded-md transition-all"
-              >
-                <Receipt className="h-4 w-4" />
-                Transactions
-                {categoryFilter && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs bg-teal/20 text-teal rounded-full">
-                    filtered
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Dashboard Tab */}
-            <TabsContent value="dashboard" className="mt-0">
               {/* KPI Metrics Grid - Enhanced with sparklines */}
               <section className="mb-8">
                 <div className="flex items-center justify-between mb-4">
@@ -588,10 +585,19 @@ export default function Home() {
                   </ChartErrorBoundary>
                 </section>
               )}
-            </TabsContent>
+              </motion.div>
+            )}
 
-            {/* Transactions Tab */}
-            <TabsContent value="transactions" className="mt-0">
+            {/* Transactions View */}
+            {activeTab === "transactions" && (
+              <motion.div
+                key="transactions"
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                variants={tabVariants}
+                transition={tabTransition}
+              >
               <section>
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -627,26 +633,14 @@ export default function Home() {
                   onClearAccountFilter={handleClearAccountFilter}
                   isLoading={isLoading}
                   showRunningBalance={true}
+                  receiptsMap={receiptsMap}
                 />
               </section>
-            </TabsContent>
-          </Tabs>
-        </motion.main>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
       )}
-
-      {/* Footer */}
-      <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 mt-16 transition-colors">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-text-muted dark:text-gray-500">
-              © 2024 Endless Winning. All rights reserved.
-            </p>
-            <p className="text-sm text-text-muted dark:text-gray-500">
-              Powered by advanced financial analytics
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

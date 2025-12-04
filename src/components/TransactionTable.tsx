@@ -41,6 +41,9 @@ import {
   CheckCircle2,
   FileText,
   Wallet,
+  ScanLine,
+  Link2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Transaction } from "@/lib/supabase/types";
@@ -55,6 +58,19 @@ import {
   getStatusColor,
 } from "@/lib/transaction-utils";
 
+// Receipt type for transaction-receipt linking
+interface LinkedReceipt {
+  id: string;
+  vendor: string | null;
+  amount: number | null;
+  date: string | null;
+  match_status: string;
+  match_confidence: number;
+  ocr_confidence: number;
+  storage_path: string;
+  created_at: string;
+}
+
 interface TransactionTableProps {
   transactions: Transaction[];
   categoryFilter?: string | null;
@@ -64,6 +80,7 @@ interface TransactionTableProps {
   isLoading?: boolean;
   showRunningBalance?: boolean;
   startingBalance?: number;
+  receiptsMap?: Map<string, LinkedReceipt[]>; // Map of transaction_id -> receipts
 }
 
 // All available categories for the category picker
@@ -872,6 +889,7 @@ function TransactionRow({
   onToggleSelect,
   onCategoryChange,
   isFocused,
+  hasReceipt,
 }: {
   transaction: Transaction;
   runningBalance?: number;
@@ -881,6 +899,7 @@ function TransactionRow({
   onToggleSelect: (id: string) => void;
   onCategoryChange: (id: string, category: string) => void;
   isFocused: boolean;
+  hasReceipt?: boolean;
 }) {
   const category = getCategory(transaction);
   const hasAICategory =
@@ -953,6 +972,9 @@ function TransactionRow({
           <p className="font-medium text-navy-dark dark:text-white truncate">
             {merchantName}
           </p>
+          {hasReceipt && (
+            <ScanLine className="w-3 h-3 text-teal flex-shrink-0" title="Receipt attached" />
+          )}
           {hasAICategory && (
             <Sparkles className="w-3 h-3 text-purple-500 flex-shrink-0" />
           )}
@@ -1025,6 +1047,7 @@ export function TransactionTable({
   isLoading,
   showRunningBalance = true,
   startingBalance = 0,
+  receiptsMap,
 }: TransactionTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -1483,6 +1506,7 @@ export function TransactionTable({
                   const balanceEntry = paginatedWithBalance.find(
                     (e) => e.tx.id === tx.id
                   );
+                  const txReceipts = receiptsMap?.get(tx.id);
                   return (
                     <TransactionRow
                       key={tx.id}
@@ -1494,6 +1518,7 @@ export function TransactionTable({
                       onToggleSelect={toggleSelect}
                       onCategoryChange={handleCategoryChange}
                       isFocused={globalIndex === focusedIndex}
+                      hasReceipt={!!txReceipts && txReceipts.length > 0}
                     />
                   );
                 })}
