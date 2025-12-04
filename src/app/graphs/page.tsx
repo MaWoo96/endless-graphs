@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { ExpensesPieChart } from "@/components/charts/ExpensesPieChart";
@@ -158,7 +158,7 @@ function filterTransactionsByYear(
   });
 }
 
-export default function Home() {
+function HomeContent() {
   // URL-based tab state
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -642,5 +642,21 @@ export default function Home() {
         </main>
       )}
     </div>
+  );
+}
+
+function HomeFallback() {
+  return (
+    <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900">
+      <Loader2 className="h-8 w-8 animate-spin text-teal" />
+    </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<HomeFallback />}>
+      <HomeContent />
+    </Suspense>
   );
 }
