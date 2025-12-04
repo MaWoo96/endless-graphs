@@ -39,9 +39,21 @@ import {
   Loader2,
   Download,
   CheckCircle2,
+  FileText,
+  Wallet,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Transaction } from "@/lib/supabase/types";
+import {
+  getCategoryEmoji,
+  getRelativeTime,
+  normalizeMerchantName,
+  getTransactionAbbreviation,
+  getTransactionBgColor,
+  formatTransactionAmount,
+  getConfidenceColor,
+  getStatusColor,
+} from "@/lib/transaction-utils";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -390,6 +402,8 @@ function TransactionDetailContent({
   onUpdate?: (updated: Transaction) => void;
 }) {
   const [locationExpanded, setLocationExpanded] = useState(false);
+  const [paymentExpanded, setPaymentExpanded] = useState(false);
+  const [accountExpanded, setAccountExpanded] = useState(true);
   const [reviewNotes, setReviewNotes] = useState(transaction.review_notes || "");
   const [reviewStatus, setReviewStatus] = useState<Transaction["review_status"]>(
     transaction.review_status
@@ -404,7 +418,14 @@ function TransactionDetailContent({
   const hasLocation = transaction.location_address || transaction.location_city;
   const hasAICategory =
     transaction.categorization_source && transaction.categorization_confidence;
+  const hasPaymentDetails = transaction.payment_channel || transaction.name;
   const supabase = createClient();
+
+  // Get formatted amount using new utility
+  const amountDisplay = formatTransactionAmount(transaction.amount);
+  const confidenceDisplay = hasAICategory && transaction.categorization_confidence
+    ? getConfidenceColor(transaction.categorization_confidence)
+    : null;
 
   // Save review status and notes
   const handleSaveReview = useCallback(
@@ -478,34 +499,40 @@ function TransactionDetailContent({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header with merchant info */}
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+      {/* Header with merchant info - glass morphism style */}
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 glass-panel">
         <div className="flex items-center gap-4">
-          {/* Merchant logo or fallback */}
+          {/* Merchant logo or fallback with emoji */}
           {transaction.merchant_logo_url ? (
             <img
               src={transaction.merchant_logo_url}
               alt={transaction.merchant_name || "Merchant"}
-              className="w-12 h-12 rounded-xl object-contain bg-white shadow-sm"
+              className="w-14 h-14 rounded-xl object-contain bg-white dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10"
             />
           ) : (
             <div
-              className={`w-12 h-12 rounded-xl flex items-center justify-center text-sm font-semibold ${getCategoryColor(
+              className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 ${getTransactionBgColor(
+                transaction.merchant_name,
                 transaction.pfc_primary
-              )}`}
+              )}/20`}
             >
-              {getMerchantAbbreviation(transaction.merchant_name || transaction.name)}
+              {getCategoryEmoji(category)}
             </div>
           )}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-lg text-navy-dark dark:text-white truncate">
-              {transaction.merchant_name || transaction.name || "Unknown"}
+              {normalizeMerchantName(transaction.merchant_name || transaction.name)}
             </h3>
-            {transaction.institution_name && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {transaction.institution_name}
-              </p>
-            )}
+            <div className="flex items-center gap-2 mt-0.5">
+              {transaction.institution_name && (
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {transaction.institution_name}
+                </span>
+              )}
+              <span className="text-xs text-gray-400">
+                {getRelativeTime(transaction.date)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -563,17 +590,16 @@ function TransactionDetailContent({
             )}
         </div>
 
-        {/* AI Categorization info */}
-        {hasAICategory && (
-          <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
+        {/* AI Categorization info - enhanced with confidence color */}
+        {hasAICategory && confidenceDisplay && (
+          <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl p-4 glass-card-light">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="w-4 h-4 text-purple-500" />
               <span className="font-medium text-purple-700 dark:text-purple-300">
                 AI Categorization
               </span>
-              <Badge className="bg-purple-500/20 text-purple-700 dark:text-purple-200 text-xs border-0 ml-auto">
-                {Math.round((transaction.categorization_confidence || 0) * 100)}%
-                confident
+              <Badge className={`${confidenceDisplay.bg} ${confidenceDisplay.text} text-xs border-0 ml-auto`}>
+                {Math.round((transaction.categorization_confidence || 0) * 100)}% • {confidenceDisplay.label}
               </Badge>
             </div>
             <p className="text-sm text-purple-600 dark:text-purple-400">
@@ -590,29 +616,83 @@ function TransactionDetailContent({
           </div>
         )}
 
-        {/* Account & Payment info */}
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-gray-500">
-              <Building2 className="w-4 h-4" />
-              Institution
+        {/* Account Info - Collapsible */}
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden glass-card-light">
+          <button
+            onClick={() => setAccountExpanded(!accountExpanded)}
+            className="w-full flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+              <Wallet className="w-4 h-4" />
+              <span className="font-medium">Account Information</span>
             </div>
-            <span className="font-medium text-navy-dark dark:text-white">
-              {transaction.institution_name || "Unknown"}
-            </span>
-          </div>
-          {transaction.payment_channel && (
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-gray-500">
-                <CreditCard className="w-4 h-4" />
-                Payment Method
+            {accountExpanded ? (
+              <ChevronUp className="w-4 h-4 text-gray-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-gray-400" />
+            )}
+          </button>
+          {accountExpanded && (
+            <div className="px-4 pb-4 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 text-gray-500">
+                  <Building2 className="w-4 h-4" />
+                  Institution
+                </div>
+                <span className="font-medium text-navy-dark dark:text-white">
+                  {transaction.institution_name || "Unknown"}
+                </span>
               </div>
-              <span className="font-medium text-navy-dark dark:text-white capitalize">
-                {transaction.payment_channel}
-              </span>
+              {transaction.payment_channel && (
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2 text-gray-500">
+                    <CreditCard className="w-4 h-4" />
+                    Payment Method
+                  </div>
+                  <span className="font-medium text-navy-dark dark:text-white capitalize">
+                    {transaction.payment_channel}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
+
+        {/* Payment Details - Collapsible */}
+        {hasPaymentDetails && (
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden glass-card-light">
+            <button
+              onClick={() => setPaymentExpanded(!paymentExpanded)}
+              className="w-full flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                <FileText className="w-4 h-4" />
+                <span className="font-medium">Payment Details</span>
+              </div>
+              {paymentExpanded ? (
+                <ChevronUp className="w-4 h-4 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              )}
+            </button>
+            {paymentExpanded && (
+              <div className="px-4 pb-4 space-y-2 text-sm">
+                {transaction.name && transaction.name !== transaction.merchant_name && (
+                  <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                    <div className="text-xs text-gray-500 mb-1">Bank Description</div>
+                    <div className="font-mono text-xs text-gray-700 dark:text-gray-300">{transaction.name}</div>
+                  </div>
+                )}
+                {transaction.payment_channel && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Channel</span>
+                    <span className="capitalize">{transaction.payment_channel}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Location (collapsible) */}
         {hasLocation && (
@@ -800,12 +880,17 @@ function TransactionRow({
   onCategoryChange: (id: string, category: string) => void;
   isFocused: boolean;
 }) {
-  const isIncome = transaction.amount < 0;
   const category = getCategory(transaction);
   const hasAICategory =
     transaction.categorization_source && transaction.categorization_confidence;
   const isFlagged = transaction.review_status === "flagged";
   const isApproved = transaction.review_status === "approved";
+
+  // Use new utilities
+  const amountDisplay = formatTransactionAmount(transaction.amount);
+  const categoryEmoji = getCategoryEmoji(category);
+  const relativeTime = getRelativeTime(transaction.date);
+  const merchantName = normalizeMerchantName(transaction.merchant_name || transaction.name);
 
   return (
     <div
@@ -830,31 +915,31 @@ function TransactionRow({
         />
       </div>
 
-      {/* Merchant icon */}
+      {/* Merchant icon with emoji fallback */}
       <div className="flex-shrink-0 relative">
         {transaction.merchant_logo_url ? (
           <img
             src={transaction.merchant_logo_url}
-            alt={transaction.merchant_name || "Merchant"}
+            alt={merchantName}
             className="w-10 h-10 rounded-lg object-contain bg-white border border-gray-100 dark:border-gray-700 shadow-sm"
           />
         ) : (
           <div
-            className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-semibold ${getCategoryColor(
+            className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${getCategoryColor(
               transaction.pfc_primary
             )}`}
           >
-            {getMerchantAbbreviation(transaction.merchant_name || transaction.name)}
+            {categoryEmoji}
           </div>
         )}
-        {/* Status indicators */}
+        {/* Status indicators with glow */}
         {isFlagged && (
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-warning-amber rounded-full flex items-center justify-center">
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-warning-amber rounded-full flex items-center justify-center glow-amber">
             <Flag className="w-2.5 h-2.5 text-white fill-current" />
           </div>
         )}
         {isApproved && (
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-winning-green rounded-full flex items-center justify-center">
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-winning-green rounded-full flex items-center justify-center glow-emerald">
             <Check className="w-2.5 h-2.5 text-white" />
           </div>
         )}
@@ -864,36 +949,34 @@ function TransactionRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="font-medium text-navy-dark dark:text-white truncate">
-            {transaction.merchant_name || transaction.name || "Unknown"}
+            {merchantName}
           </p>
           {hasAICategory && (
             <Sparkles className="w-3 h-3 text-purple-500 flex-shrink-0" />
           )}
           {transaction.pending && (
-            <span className="w-2 h-2 rounded-full bg-warning-amber flex-shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-warning-amber glow-amber glow-pulse flex-shrink-0" />
           )}
           {transaction.review_notes && (
             <MessageSquare className="w-3 h-3 text-gray-400 flex-shrink-0" />
           )}
         </div>
-        {/* Inline category picker */}
-        <div className="mt-0.5" onClick={(e) => e.stopPropagation()}>
-          <CategoryPicker
-            value={category}
-            onChange={(cat) => onCategoryChange(transaction.id, cat)}
-          />
+        {/* Category with emoji and relative time */}
+        <div className="flex items-center gap-2 mt-0.5">
+          <div onClick={(e) => e.stopPropagation()}>
+            <CategoryPicker
+              value={category}
+              onChange={(cat) => onCategoryChange(transaction.id, cat)}
+            />
+          </div>
+          <span className="text-xs text-gray-400">{relativeTime}</span>
         </div>
       </div>
 
       {/* Amount */}
       <div className="flex-shrink-0 text-right">
-        <p
-          className={`font-semibold ${
-            isIncome ? "text-winning-green" : "text-navy-dark dark:text-white"
-          }`}
-        >
-          {isIncome ? "+" : "-"}
-          {formatCurrency(transaction.amount)}
+        <p className={`font-semibold ${amountDisplay.className}`}>
+          {amountDisplay.formatted}
         </p>
       </div>
 

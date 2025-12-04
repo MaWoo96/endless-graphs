@@ -215,12 +215,44 @@
 }
 
 @layer utilities {
+  /* Glow effects */
   .shadow-glow {
     box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
   }
 
   .shadow-glow-sm {
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+  }
+
+  /* Status indicator glows - for connection status dots */
+  .glow-emerald {
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.7);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.7);
+  }
+
+  .glow-teal {
+    box-shadow: 0 0 10px rgba(138, 178, 181, 0.7);
+  }
+
+  /* Pulsing glow animation for live indicators */
+  .glow-pulse {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes glow-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
   }
 
   .bg-gradient-mint {
@@ -244,6 +276,37 @@
 
   .text-info {
     @apply text-info-blue-text dark:text-info-blue;
+  }
+
+  /* Confidence level colors */
+  .confidence-high {
+    @apply bg-winning-green/20 text-winning-green;
+  }
+
+  .confidence-medium {
+    @apply bg-warning-amber/20 text-warning-amber;
+  }
+
+  .confidence-low {
+    @apply bg-loss-red/20 text-loss-red;
+  }
+
+  /* Ring states for avatars and interactive elements */
+  .ring-interactive {
+    @apply ring-1 ring-white/25 hover:ring-2 hover:ring-teal/50 transition-all;
+  }
+
+  /* Smooth collapse/expand for text */
+  .collapse-text {
+    @apply overflow-hidden transition-all duration-200 ease-linear whitespace-nowrap;
+  }
+
+  .collapse-text-hidden {
+    @apply max-w-0 opacity-0;
+  }
+
+  .collapse-text-visible {
+    @apply max-w-[12rem] opacity-100;
   }
 }
 

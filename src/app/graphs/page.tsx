@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { ExpensesPieChart } from "@/components/charts/ExpensesPieChart";
 import { KPICard } from "@/components/charts/KPICard";
 import { EnhancedKPICard, KPIGrid } from "@/components/charts/EnhancedKPICard";
@@ -14,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   expensesByCategory as mockExpensesByCategory,
 } from "@/lib/mock-data";
-import { BarChart3, LogOut, Loader2, AlertCircle, RefreshCw, ArrowLeft, LayoutDashboard, Receipt, FileDown, TrendingUp } from "lucide-react";
+import { BarChart3, LogOut, Loader2, AlertCircle, RefreshCw, ArrowLeft, LayoutDashboard, Receipt, FileDown, TrendingUp, Database, Wifi } from "lucide-react";
 import Link from "next/link";
 import { DateRangePicker, DateRangeOption } from "@/components/DateRangePicker";
 import { YearPicker } from "@/components/YearPicker";
@@ -23,6 +24,18 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { EntityPicker } from "@/components/EntityPicker";
 import { useEntityContext } from "@/contexts/EntityContext";
 import type { Transaction } from "@/lib/supabase/types";
+
+// Page transition variants
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 }
+};
+
+const pageTransition = {
+  duration: 0.4,
+  ease: [0.25, 0.1, 0.25, 1] as const // easeOut cubic bezier
+};
 
 // Helper to get date range from option
 function getDateRangeFromOption(option: DateRangeOption): { startDate: Date; endDate: Date } {
@@ -242,50 +255,66 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-off-white dark:bg-gray-950 transition-colors">
-      {/* Header */}
-      <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 transition-colors">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+      {/* Header - Glass Morphism Style */}
+      <header className="sticky top-0 z-20 border-b border-gray-200/50 dark:border-gray-800/50 glass-panel transition-colors">
+        <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link
                 href="/"
-                className="p-2 text-gray-500 hover:text-navy-dark dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="p-2 text-gray-500 hover:text-navy-dark dark:hover:text-white transition-colors rounded-lg glass-button"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-winning-green to-teal rounded-lg">
+                <div className="p-2 bg-gradient-to-br from-winning-green to-teal rounded-lg shadow-sm">
                   <BarChart3 className="h-6 w-6 text-white" />
                 </div>
                 <EntityPicker />
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {/* Connection Status Indicators */}
+              <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 glass-card-light rounded-full">
+                <div className="flex items-center gap-1.5" title="Database connected">
+                  <span className={`w-2 h-2 rounded-full ${hasRealData ? 'bg-winning-green glow-emerald' : 'bg-gray-400'}`} />
+                  <Database className="w-3.5 h-3.5 text-gray-500" />
+                </div>
+                <div className="h-3 w-px bg-gray-300 dark:bg-gray-600" />
+                <div className="flex items-center gap-1.5" title="Live sync">
+                  <span className={`w-2 h-2 rounded-full ${hasRealData ? 'bg-winning-green glow-emerald glow-pulse' : 'bg-gray-400'}`} />
+                  <Wifi className="w-3.5 h-3.5 text-gray-500" />
+                </div>
+              </div>
+
+              {/* Data Status Badge */}
               {hasRealData && (
-                <span className="px-2 py-1 text-xs font-medium bg-winning-green/10 text-winning-green rounded-full">
+                <span className="px-3 py-1.5 text-xs font-medium bg-winning-green/10 text-winning-green rounded-full flex items-center gap-1.5 glass-button">
+                  <span className="w-1.5 h-1.5 rounded-full bg-winning-green glow-emerald" />
                   Live Data
                 </span>
               )}
               {!hasRealData && !isLoading && (
-                <span className="px-2 py-1 text-xs font-medium bg-warning-amber/10 text-warning-amber rounded-full">
+                <span className="px-3 py-1.5 text-xs font-medium bg-warning-amber/10 text-warning-amber rounded-full flex items-center gap-1.5 glass-button">
+                  <span className="w-1.5 h-1.5 rounded-full bg-warning-amber" />
                   Demo Data
                 </span>
               )}
               <ThemeToggle />
               <button
                 onClick={refetch}
-                className="p-2 text-gray-500 hover:text-navy-dark dark:hover:text-white transition-colors"
+                className="p-2 text-gray-500 hover:text-navy-dark dark:hover:text-white transition-colors glass-button rounded-lg"
                 title="Refresh data"
               >
                 <RefreshCw className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} />
               </button>
               {user && (
-                <div className="flex items-center gap-3 border-l border-gray-200 dark:border-gray-700 pl-4">
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{user.email}</span>
+                <div className="flex items-center gap-3 border-l border-gray-200/50 dark:border-gray-700/50 pl-4">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 hidden md:inline">{user.email}</span>
                   <button
                     onClick={signOut}
                     disabled={isSigningOut}
-                    className="p-2 text-gray-500 hover:text-loss-red transition-colors disabled:opacity-50"
+                    className="p-2 text-gray-500 hover:text-loss-red transition-colors disabled:opacity-50 glass-button rounded-lg"
                     title="Sign out"
                   >
                     {isSigningOut ? (
@@ -325,12 +354,19 @@ export default function Home() {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content with Page Transitions */}
       {!isLoading && !entityLoading && (
-        <main className="max-w-7xl mx-auto px-6 py-8">
+        <motion.main
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          variants={pageVariants}
+          transition={pageTransition}
+          className="max-w-7xl mx-auto px-6 py-8"
+        >
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            {/* Tab Navigation */}
-            <TabsList className="mb-6 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+            {/* Tab Navigation - Glass Morphism */}
+            <TabsList className="mb-6 glass-card-light p-1 rounded-lg">
               <TabsTrigger
                 value="dashboard"
                 className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:shadow-sm px-4 py-2 rounded-md transition-all"
@@ -564,7 +600,7 @@ export default function Home() {
               </section>
             </TabsContent>
           </Tabs>
-        </main>
+        </motion.main>
       )}
 
       {/* Footer */}
