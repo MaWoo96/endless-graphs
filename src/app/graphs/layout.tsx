@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Separator } from "@/components/ui/separator";
@@ -12,6 +13,15 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { useEntityContext } from "@/contexts/EntityContext";
+import { Loader2 } from "lucide-react";
+
+function SidebarFallback() {
+  return (
+    <div className="flex h-screen w-64 items-center justify-center bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800">
+      <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+    </div>
+  );
+}
 
 export default function GraphsLayout({
   children,
@@ -22,7 +32,9 @@ export default function GraphsLayout({
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <Suspense fallback={<SidebarFallback />}>
+        <AppSidebar />
+      </Suspense>
       <SidebarInset>
         {/* Header with breadcrumb */}
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
