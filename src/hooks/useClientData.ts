@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Client, Transaction, MonthlyData, CategoryData, CashFlowData } from "@/lib/supabase/types";
+import type { Client, Transaction, MonthlyData, CategoryData, CashFlowData, Account } from "@/lib/supabase/types";
 
 // Pagination constants - prevents loading unbounded transactions
 const PAGE_SIZE = 500;
@@ -448,4 +448,64 @@ export function useUser() {
   };
 
   return { user, isLoading, isSigningOut, signOut };
+}
+
+/**
+ * Hook to fetch accounts for an entity
+ * Used for multi-account filtering in transaction views
+ */
+export function useAccounts(entityId: string | null) {
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const supabase = createClient();
+
+  const fetchAccounts = useCallback(async () => {
+    if (!entityId) {
+      setAccounts([]);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Fetch accounts with institution name from plaid_items join
+      const { data, error: fetchError } = await supabase
+        .from("accounts")
+        .select(`
+          *,
+          plaid_items!accounts_plaid_item_id_fkey (
+            institution_name
+          )
+        `)
+        .eq("entity_id", entityId)
+        .eq("is_active", true)
+        .order("type")
+        .order("name");
+
+      if (fetchError) throw fetchError;
+
+      // Transform data to flatten institution_name
+      const transformedAccounts: Account[] = (data || []).map((acc) => ({
+        ...acc,
+        institution_name: acc.plaid_items?.institution_name || null,
+        plaid_items: undefined, // Remove nested object
+      }));
+
+      setAccounts(transformedAccounts);
+    } catch (err) {
+      console.error("Error fetching accounts:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch accounts");
+      setAccounts([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [supabase, entityId]);
+
+  useEffect(() => {
+    fetchAccounts();
+  }, [fetchAccounts]);
+
+  return { accounts, isLoading, error, refetch: fetchAccounts };
 }

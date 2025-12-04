@@ -19,10 +19,11 @@ import { BarChart3, LogOut, Loader2, AlertCircle, RefreshCw, ArrowLeft, LayoutDa
 import Link from "next/link";
 import { DateRangePicker, DateRangeOption } from "@/components/DateRangePicker";
 import { YearPicker } from "@/components/YearPicker";
-import { useClientData, useAggregatedData, useUser } from "@/hooks/useClientData";
+import { useClientData, useAggregatedData, useUser, useAccounts } from "@/hooks/useClientData";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { EntityPicker } from "@/components/EntityPicker";
 import { useEntityContext } from "@/contexts/EntityContext";
+import { AccountFilterPills } from "@/components/AccountFilterPills";
 import type { Transaction } from "@/lib/supabase/types";
 
 // Page transition variants
@@ -153,6 +154,7 @@ export default function Home() {
   const { user, isSigningOut, signOut } = useUser();
   const { selectedEntity, isLoading: entityLoading } = useEntityContext();
   const { client, transactions: allTransactions, isLoading, error, refetch } = useClientData(maxDateRange, selectedEntity?.id);
+  const { accounts, isLoading: accountsLoading } = useAccounts(selectedEntity?.id || null);
 
   // Section-specific date range states
   const [kpiDateOption, setKpiDateOption] = useState<DateRangeOption>("12m");
@@ -163,6 +165,7 @@ export default function Home() {
   // Tab and filter state
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [accountFilter, setAccountFilter] = useState<string | null>(null);
 
   // Handle category click from pie chart - switch to transactions tab with filter
   const handleCategoryClick = useCallback((category: string) => {
@@ -174,6 +177,16 @@ export default function Home() {
   const handleClearFilter = useCallback(() => {
     setCategoryFilter(null);
   }, []);
+
+  // Clear account filter
+  const handleClearAccountFilter = useCallback(() => {
+    setAccountFilter(null);
+  }, []);
+
+  // Reset account filter when entity changes
+  useMemo(() => {
+    setAccountFilter(null);
+  }, [selectedEntity?.id]);
 
   // Compute date ranges for each section
   const kpiDateRange = useMemo(() => getDateRangeFromOption(kpiDateOption), [kpiDateOption]);
@@ -587,13 +600,31 @@ export default function Home() {
                     </h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                       {allTransactions.length} total transactions • Last 12 months
+                      {accounts.length > 1 && (
+                        <span className="ml-2">• {accounts.length} accounts</span>
+                      )}
                     </p>
                   </div>
                 </div>
+
+                {/* Account Filter Pills - show when entity has multiple accounts */}
+                {accounts.length > 1 && (
+                  <div className="mb-4">
+                    <AccountFilterPills
+                      accounts={accounts}
+                      selectedAccountId={accountFilter}
+                      onSelectAccount={setAccountFilter}
+                      isLoading={accountsLoading}
+                    />
+                  </div>
+                )}
+
                 <TransactionTable
                   transactions={allTransactions}
                   categoryFilter={categoryFilter}
+                  accountFilter={accountFilter}
                   onClearFilter={handleClearFilter}
+                  onClearAccountFilter={handleClearAccountFilter}
                   isLoading={isLoading}
                   showRunningBalance={true}
                 />

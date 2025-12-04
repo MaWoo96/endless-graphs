@@ -58,7 +58,9 @@ import {
 interface TransactionTableProps {
   transactions: Transaction[];
   categoryFilter?: string | null;
+  accountFilter?: string | null;
   onClearFilter?: () => void;
+  onClearAccountFilter?: () => void;
   isLoading?: boolean;
   showRunningBalance?: boolean;
   startingBalance?: number;
@@ -1017,7 +1019,9 @@ function groupTransactionsByDate(
 export function TransactionTable({
   transactions,
   categoryFilter,
+  accountFilter,
   onClearFilter,
+  onClearAccountFilter,
   isLoading,
   showRunningBalance = true,
   startingBalance = 0,
@@ -1275,6 +1279,11 @@ export function TransactionTable({
   const filteredTransactions = useMemo(() => {
     let result = localTransactions;
 
+    // Apply account filter
+    if (accountFilter) {
+      result = result.filter((tx) => tx.account_id === accountFilter);
+    }
+
     // Apply category filter
     if (categoryFilter) {
       result = result.filter((tx) => {
@@ -1299,7 +1308,7 @@ export function TransactionTable({
     return result.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  }, [localTransactions, categoryFilter, searchQuery]);
+  }, [localTransactions, categoryFilter, accountFilter, searchQuery]);
 
   // Calculate running balances (from oldest to newest, then reverse for display)
   const transactionsWithBalance = useMemo(() => {
@@ -1343,7 +1352,7 @@ export function TransactionTable({
   useEffect(() => {
     setCurrentPage(1);
     setFocusedIndex(-1);
-  }, [categoryFilter, searchQuery]);
+  }, [categoryFilter, accountFilter, searchQuery]);
 
   // Calculate totals
   const totals = useMemo(() => {

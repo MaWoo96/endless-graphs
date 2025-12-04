@@ -97,6 +97,30 @@ export interface PlaidItem {
   updated_at: string | null;
 }
 
+export interface Account {
+  id: string;
+  plaid_item_id: string;
+  entity_id: string | null;
+  tenant_id: string;
+  plaid_account_id: string;
+  name: string;
+  official_name: string | null;
+  mask: string | null;
+  type: 'depository' | 'credit' | 'loan' | 'investment' | 'other';
+  subtype: string | null;
+  display_name: string | null;
+  is_active: boolean;
+  balance_available: number | null;
+  balance_current: number | null;
+  balance_limit: number | null;
+  balance_currency: string | null;
+  balance_updated_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  // Joined fields from related tables
+  institution_name?: string | null;
+}
+
 // Aggregated data types for charts
 export interface MonthlyData {
   month: string;
