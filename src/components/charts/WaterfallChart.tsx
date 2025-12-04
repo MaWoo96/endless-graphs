@@ -12,8 +12,9 @@ import {
   ReferenceLine,
 } from "recharts";
 import { useTheme } from "next-themes";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { FINANCIAL_COLORS, FINANCIAL_COLORS_DARK, CHART_COLORS } from "@/lib/chart-colors";
+import { FINANCIAL_COLORS, FINANCIAL_COLORS_DARK, CHART_COLORS, CHART_COLORS_DARK } from "@/lib/chart-colors";
 
 interface WaterfallDataPoint {
   name: string;
@@ -157,14 +158,32 @@ export function CashFlowWaterfallChart({
   height = 350,
 }: CashFlowWaterfallProps) {
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const isDark = resolvedTheme === "dark";
   const colors = isDark ? FINANCIAL_COLORS_DARK : FINANCIAL_COLORS;
+  const chartColors = isDark ? CHART_COLORS_DARK : CHART_COLORS;
   const waterfallData = transformToSimpleWaterfall(data);
 
   if (waterfallData.length === 0) {
     return (
       <div className={cn("flex items-center justify-center h-64 text-gray-500", className)}>
         No cash flow data available
+      </div>
+    );
+  }
+
+  // Avoid hydration mismatch - show loading state until mounted
+  if (!mounted) {
+    return (
+      <div className={cn("bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-slate-700 animate-pulse", className)}>
+        <div className="h-6 bg-gray-200 dark:bg-slate-700 rounded w-48 mb-2"></div>
+        <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-64 mb-6"></div>
+        <div className="h-[350px] bg-gray-100 dark:bg-slate-700 rounded"></div>
       </div>
     );
   }
@@ -196,7 +215,7 @@ export function CashFlowWaterfallChart({
             <span className="text-gray-600 dark:text-gray-400">Negative</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: CHART_COLORS.teal }} />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: chartColors.teal }} />
             <span className="text-gray-600 dark:text-gray-400">Total</span>
           </div>
         </div>
@@ -246,7 +265,7 @@ export function CashFlowWaterfallChart({
                 key={`cell-${index}`}
                 fill={
                   entry.isTotal
-                    ? CHART_COLORS.teal
+                    ? chartColors.teal
                     : entry.value >= 0
                       ? colors.profit
                       : colors.loss
