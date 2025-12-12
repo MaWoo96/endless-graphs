@@ -15,9 +15,10 @@ import { YearPicker } from "@/components/YearPicker";
 import { useClientData, useAggregatedData, useAccounts } from "@/hooks/useClientData";
 import { useEntityContext } from "@/contexts/EntityContext";
 import { AccountFilterPills } from "@/components/AccountFilterPills";
+import { TagFilterPills } from "@/components/TagPicker";
 import { createClient } from "@/lib/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { Transaction } from "@/lib/supabase/types";
+import type { Transaction, Tag } from "@/lib/supabase/types";
 
 // Chart loading skeleton for lazy-loaded components
 function ChartSkeleton({ height = "h-64" }: { height?: string }) {
@@ -265,6 +266,83 @@ function HomeContent() {
   // Filter state
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
+  const [transactionTagsMap, setTransactionTagsMap] = useState<Map<string, string[]>>(new Map());
+
+  // Fetch available tags for the tenant
+  useEffect(() => {
+    async function fetchTags() {
+      if (!selectedEntity?.tenant_id) {
+        setAvailableTags([]);
+        return;
+      }
+
+      setTagsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("tags")
+          .select("*")
+          .eq("tenant_id", selectedEntity.tenant_id)
+          .order("name");
+
+        if (error) throw error;
+        setAvailableTags(data || []);
+      } catch (err) {
+        console.error("Failed to fetch tags:", err);
+      } finally {
+        setTagsLoading(false);
+      }
+    }
+    fetchTags();
+  }, [supabase, selectedEntity?.tenant_id]);
+
+  // Fetch transaction-tag mappings when tags are selected
+  useEffect(() => {
+    async function fetchTransactionTags() {
+      if (selectedTagIds.length === 0 || allTransactions.length === 0) {
+        setTransactionTagsMap(new Map());
+        return;
+      }
+
+      try {
+        // Get all transaction_tags for selected tags
+        const { data, error } = await supabase
+          .from("transaction_tags")
+          .select("transaction_id, tag_id")
+          .in("tag_id", selectedTagIds);
+
+        if (error) throw error;
+
+        // Build map of transaction_id -> tag_ids
+        const map = new Map<string, string[]>();
+        data?.forEach((tt) => {
+          const existing = map.get(tt.transaction_id) || [];
+          existing.push(tt.tag_id);
+          map.set(tt.transaction_id, existing);
+        });
+        setTransactionTagsMap(map);
+      } catch (err) {
+        console.error("Failed to fetch transaction tags:", err);
+      }
+    }
+    fetchTransactionTags();
+  }, [supabase, selectedTagIds, allTransactions.length]);
+
+  // Toggle tag filter
+  const handleToggleTag = useCallback((tagId: string) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId)
+        ? prev.filter((id) => id !== tagId)
+        : [...prev, tagId]
+    );
+  }, []);
+
+  // Clear tag filters
+  const handleClearTagFilters = useCallback(() => {
+    setSelectedTagIds([]);
+  }, []);
 
   // Handle category click from pie chart - switch to transactions tab with filter
   const handleCategoryClick = useCallback((category: string) => {
@@ -671,8 +749,31 @@ function HomeContent() {
                   </div>
                 )}
 
+                {/* Tag Filter Pills - show when tags exist */}
+                {availableTags.length > 0 && (
+                  <div className="mb-4">
+                    <TagFilterPills
+                      tags={availableTags}
+                      selectedTagIds={selectedTagIds}
+                      onToggleTag={handleToggleTag}
+                      isLoading={tagsLoading}
+                    />
+                  </div>
+                )}
+
                 <TransactionTable
-                  transactions={allTransactions}
+                  transactions={
+                    // Filter by selected tags if any are selected
+                    selectedTagIds.length > 0
+                      ? allTransactions.filter((tx) =>
+                          // Transaction must have at least one of the selected tags
+                          transactionTagsMap.has(tx.id) &&
+                          selectedTagIds.some((tagId) =>
+                            transactionTagsMap.get(tx.id)?.includes(tagId)
+                          )
+                        )
+                      : allTransactions
+                  }
                   categoryFilter={categoryFilter}
                   accountFilter={accountFilter}
                   onClearFilter={handleClearFilter}

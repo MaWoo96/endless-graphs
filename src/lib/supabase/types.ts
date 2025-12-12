@@ -144,3 +144,26 @@ export interface CashFlowData {
   outflow: number;
   net: number;
 }
+
+// Transaction tagging types
+export interface Tag {
+  id: string;
+  tenant_id: string;
+  name: string;
+  color: string | null;
+  description: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface TransactionTag {
+  id: string;
+  transaction_id: string;
+  tag_id: string;
+  created_at: string | null;
+}
+
+// Extended transaction with tags (for joined queries)
+export interface TransactionWithTags extends Transaction {
+  tags?: Tag[];
+}

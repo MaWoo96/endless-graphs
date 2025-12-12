@@ -48,7 +48,8 @@ import {
   BookOpen,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import type { Transaction } from "@/lib/supabase/types";
+import type { Transaction, Tag as TagType } from "@/lib/supabase/types";
+import { TagPicker } from "./TagPicker";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TransactionCardList } from "./TransactionCard";
 import {
@@ -437,6 +438,8 @@ function TransactionDetailContent({
   const [showNotes, setShowNotes] = useState(
     !!transaction.review_notes || transaction.review_status === "flagged"
   );
+  const [transactionTags, setTransactionTags] = useState<TagType[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(true);
 
   const isIncome = transaction.amount < 0;
   const category = getCategory(transaction);
@@ -445,6 +448,33 @@ function TransactionDetailContent({
     transaction.categorization_source && transaction.categorization_confidence;
   const hasPaymentDetails = transaction.payment_channel || transaction.name;
   const supabase = createClient();
+
+  // Fetch tags for this transaction
+  useEffect(() => {
+    async function fetchTransactionTags() {
+      setTagsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("transaction_tags")
+          .select("tag_id, tags(*)")
+          .eq("transaction_id", transaction.id);
+
+        if (error) throw error;
+
+        const tags = data
+          ?.map((tt: { tags: TagType | TagType[] | null }) =>
+            Array.isArray(tt.tags) ? tt.tags[0] : tt.tags
+          )
+          .filter((t): t is TagType => t !== null) || [];
+        setTransactionTags(tags);
+      } catch (err) {
+        console.error("Failed to fetch transaction tags:", err);
+      } finally {
+        setTagsLoading(false);
+      }
+    }
+    fetchTransactionTags();
+  }, [supabase, transaction.id]);
 
   // Get formatted amount using new utility
   const amountDisplay = formatTransactionAmount(transaction.amount);
@@ -474,13 +504,28 @@ function TransactionDetailContent({
         if (onUpdate && data) {
           onUpdate(data as Transaction);
         }
+
+        // Sync notes to Airtable (fire and forget - don't block UI)
+        if (reviewNotes && transaction.plaid_transaction_id) {
+          fetch('https://plaid-sync-worker-485874813100.us-central1.run.app/api/sync-notes-to-airtable', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              transaction_id: transaction.plaid_transaction_id,
+              review_notes: reviewNotes,
+            }),
+          }).catch((syncErr) => {
+            // Don't fail the main save if Airtable sync fails
+            console.warn("Failed to sync notes to Airtable:", syncErr);
+          });
+        }
       } catch (err) {
         console.error("Failed to save review:", err);
       } finally {
         setIsSaving(false);
       }
     },
-    [supabase, transaction.id, reviewNotes, onUpdate]
+    [supabase, transaction.id, transaction.plaid_transaction_id, reviewNotes, onUpdate]
   );
 
   // Handle category change
@@ -852,6 +897,29 @@ function TransactionDetailContent({
             <p className="text-sm text-indigo-600 dark:text-indigo-400 whitespace-pre-wrap">
               {transaction.bookkeeper_notes}
             </p>
+          </div>
+        )}
+
+        {/* Tags Section */}
+        {transaction.tenant_id && (
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Tag className="w-4 h-4 text-gray-500" />
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Tags
+              </h4>
+              {tagsLoading && (
+                <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+              )}
+            </div>
+            {!tagsLoading && (
+              <TagPicker
+                transactionId={transaction.id}
+                tenantId={transaction.tenant_id}
+                selectedTags={transactionTags}
+                onTagsChange={setTransactionTags}
+              />
+            )}
           </div>
         )}
 
