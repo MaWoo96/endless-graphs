@@ -270,6 +270,43 @@ function HomeContent() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
   const [transactionTagsMap, setTransactionTagsMap] = useState<Map<string, string[]>>(new Map());
+  const [allTransactionTagsMap, setAllTransactionTagsMap] = useState<Map<string, Tag[]>>(new Map());
+
+  // Fetch all transaction tags for display in rows
+  useEffect(() => {
+    async function fetchAllTransactionTags() {
+      if (!selectedEntity?.tenant_id || allTransactions.length === 0) {
+        setAllTransactionTagsMap(new Map());
+        return;
+      }
+
+      try {
+        // Get all transaction_tags with their tag details for this tenant's transactions
+        const transactionIds = allTransactions.map(tx => tx.id);
+        const { data, error } = await supabase
+          .from("transaction_tags")
+          .select("transaction_id, tags(*)")
+          .in("transaction_id", transactionIds);
+
+        if (error) throw error;
+
+        // Build map of transaction_id -> Tag[]
+        const map = new Map<string, Tag[]>();
+        data?.forEach((tt: { transaction_id: string; tags: Tag | Tag[] | null }) => {
+          const tag = Array.isArray(tt.tags) ? tt.tags[0] : tt.tags;
+          if (tag) {
+            const existing = map.get(tt.transaction_id) || [];
+            existing.push(tag);
+            map.set(tt.transaction_id, existing);
+          }
+        });
+        setAllTransactionTagsMap(map);
+      } catch (err) {
+        console.error("Failed to fetch all transaction tags:", err);
+      }
+    }
+    fetchAllTransactionTags();
+  }, [supabase, selectedEntity?.tenant_id, allTransactions]);
 
   // Fetch available tags for the tenant
   useEffect(() => {
@@ -789,6 +826,7 @@ function HomeContent() {
                         : 0
                   }
                   receiptsMap={receiptsMap}
+                  tagsMap={allTransactionTagsMap}
                 />
               </section>
               </motion.div>

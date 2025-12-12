@@ -49,7 +49,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Transaction, Tag as TagType } from "@/lib/supabase/types";
-import { TagPicker } from "./TagPicker";
+import { TagPicker, TagBadges } from "./TagPicker";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { TransactionCardList } from "./TransactionCard";
 import {
@@ -86,6 +86,7 @@ interface TransactionTableProps {
   showRunningBalance?: boolean;
   startingBalance?: number;
   receiptsMap?: Map<string, LinkedReceipt[]>; // Map of transaction_id -> receipts
+  tagsMap?: Map<string, TagType[]>; // Map of transaction_id -> tags
 }
 
 // All available categories for the category picker
@@ -1033,6 +1034,7 @@ function TransactionRow({
   onCategoryChange,
   isFocused,
   hasReceipt,
+  tags,
 }: {
   transaction: Transaction;
   runningBalance?: number;
@@ -1043,6 +1045,7 @@ function TransactionRow({
   onCategoryChange: (id: string, category: string) => void;
   isFocused: boolean;
   hasReceipt?: boolean;
+  tags?: TagType[];
 }) {
   const category = getCategory(transaction);
   const hasAICategory =
@@ -1149,6 +1152,9 @@ function TransactionRow({
               onChange={(cat) => onCategoryChange(transaction.id, cat)}
             />
           </div>
+          {tags && tags.length > 0 && (
+            <TagBadges tags={tags} maxDisplay={2} />
+          )}
           <span className="text-xs text-gray-400">{relativeTime}</span>
         </div>
       </div>
@@ -1204,6 +1210,7 @@ export function TransactionTable({
   showRunningBalance = true,
   startingBalance = 0,
   receiptsMap,
+  tagsMap,
 }: TransactionTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -1832,6 +1839,7 @@ export function TransactionTable({
                     (e) => e.tx.id === tx.id
                   );
                   const txReceipts = receiptsMap?.get(tx.id);
+                  const txTags = tagsMap?.get(tx.id);
                   return (
                     <TransactionRow
                       key={tx.id}
@@ -1844,6 +1852,7 @@ export function TransactionTable({
                       onCategoryChange={handleCategoryChange}
                       isFocused={globalIndex === focusedIndex}
                       hasReceipt={!!txReceipts && txReceipts.length > 0}
+                      tags={txTags}
                     />
                   );
                 })}
