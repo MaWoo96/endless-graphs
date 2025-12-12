@@ -100,7 +100,7 @@ export function AccountFilterPills({
   return (
     <div className="flex flex-col gap-3">
       {/* Account Filter Pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+      <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin">
         {/* All Accounts pill */}
         <button
           onClick={() => onSelectAccount(null)}
