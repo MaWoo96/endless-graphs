@@ -80,6 +80,8 @@ export interface Transaction {
   review_notes: string | null;
   reviewed_at: string | null;
   reviewed_by: string | null;
+  // Bookkeeper notes (synced from Airtable, read-only in dashboard)
+  bookkeeper_notes: string | null;
 }
 
 export interface PlaidItem {
