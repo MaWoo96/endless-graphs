@@ -243,30 +243,42 @@ function exportToCSV(transactions: Transaction[]) {
   link.click();
 }
 
-// Category Picker Component
+// Category Picker Component - enhanced with better contrast and accessibility
 function CategoryPicker({
   value,
   onChange,
   disabled,
+  variant = "default",
 }: {
   value: string;
   onChange: (category: string) => void;
   disabled?: boolean;
+  variant?: "default" | "inline";
 }) {
   const [open, setOpen] = useState(false);
+  const categoryKey = value.toUpperCase().replace(/\s+/g, "_");
+  const categoryColor = getCategoryColor(categoryKey);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           disabled={disabled}
-          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors hover:opacity-80 ${getCategoryColor(
-            value.toUpperCase().replace(/\s+/g, "_")
-          )} ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+          className={`inline-flex items-center gap-1.5 transition-all ${
+            variant === "inline"
+              ? `px-2 py-0.5 rounded-full text-xs font-medium hover:opacity-80 ${categoryColor}`
+              : `px-3 py-1.5 rounded-lg text-sm font-semibold bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-500 shadow-sm`
+          } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
           onClick={(e) => e.stopPropagation()}
         >
-          {value}
-          <ChevronDown className="w-3 h-3" />
+          <span
+            className="w-2.5 h-2.5 rounded-full"
+            style={{ backgroundColor: categoryColor.includes("bg-") ? undefined : "#6366f1" }}
+          />
+          <span className={variant === "default" ? "text-gray-800 dark:text-gray-100" : ""}>
+            {value.replace(/_/g, " ")}
+          </span>
+          <ChevronDown className={`${variant === "default" ? "w-4 h-4 text-gray-500" : "w-3 h-3"}`} />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[250px] p-0" align="start">
@@ -288,7 +300,7 @@ function CategoryPicker({
                     className={`w-3 h-3 rounded-full mr-2 ${getCategoryColor(cat).split(" ")[0]}`}
                   />
                   {cat.replace(/_/g, " ")}
-                  {value.toUpperCase().replace(/\s+/g, "_") === cat && (
+                  {categoryKey === cat && (
                     <Check className="ml-auto h-4 w-4" />
                   )}
                 </CommandItem>
@@ -428,9 +440,6 @@ function TransactionDetailContent({
   onUpdate?: (updated: Transaction) => void;
   receipts?: LinkedReceipt[];
 }) {
-  const [locationExpanded, setLocationExpanded] = useState(false);
-  const [paymentExpanded, setPaymentExpanded] = useState(false);
-  const [accountExpanded, setAccountExpanded] = useState(true);
   const [reviewNotes, setReviewNotes] = useState(transaction.review_notes || "");
   const [reviewStatus, setReviewStatus] = useState<Transaction["review_status"]>(
     transaction.review_status
@@ -447,7 +456,6 @@ function TransactionDetailContent({
   const hasLocation = transaction.location_address || transaction.location_city;
   const hasAICategory =
     transaction.categorization_source && transaction.categorization_confidence;
-  const hasPaymentDetails = transaction.payment_channel || transaction.name;
   const supabase = createClient();
 
   // Fetch tags for this transaction
@@ -570,19 +578,19 @@ function TransactionDetailContent({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header with merchant info - glass morphism style */}
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 glass-panel">
+      {/* Header Row 1: Icon, Merchant Name, Website */}
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-4">
           {/* Merchant logo or fallback with emoji */}
           {transaction.merchant_logo_url ? (
             <img
               src={transaction.merchant_logo_url}
               alt={transaction.merchant_name || "Merchant"}
-              className="w-14 h-14 rounded-xl object-contain bg-white dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10"
+              className="w-12 h-12 rounded-xl object-contain bg-white dark:bg-gray-800 shadow-sm ring-1 ring-black/5 dark:ring-white/10"
             />
           ) : (
             <div
-              className={`w-14 h-14 rounded-xl flex items-center justify-center text-2xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 ${getTransactionBgColor(
+              className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 ${getTransactionBgColor(
                 transaction.merchant_name,
                 transaction.pfc_primary
               )}/20`}
@@ -594,24 +602,68 @@ function TransactionDetailContent({
             <h3 className="font-semibold text-lg text-navy-dark dark:text-white truncate">
               {normalizeMerchantName(transaction.merchant_name || transaction.name)}
             </h3>
-            <div className="flex items-center gap-2 mt-0.5">
-              {transaction.institution_name && (
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {transaction.institution_name}
-                </span>
-              )}
-              <span className="text-xs text-gray-400">
-                {getRelativeTime(transaction.date)}
+          </div>
+          {/* Website - top right */}
+          {transaction.merchant_website && (
+            <a
+              href={transaction.merchant_website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-teal hover:text-teal/80 transition-colors shrink-0"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span className="max-w-[100px] truncate">
+                {transaction.merchant_website
+                  .replace(/^https?:\/\//, "")
+                  .replace(/\/$/, "")}
+              </span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
+      </div>
+
+      {/* Header Row 2: Institution, Payment Method, Time | Address - Dark blue contrast */}
+      <div className="px-6 py-2.5 bg-navy-dark/5 dark:bg-navy-dark/40 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
+            {transaction.institution_name && (
+              <div className="flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                <span>{transaction.institution_name}</span>
+              </div>
+            )}
+            {transaction.payment_channel && (
+              <>
+                <span className="text-gray-300 dark:text-gray-600">•</span>
+                <span className="capitalize">{transaction.payment_channel.replace('_', ' ')}</span>
+              </>
+            )}
+            <span className="text-gray-300 dark:text-gray-600">•</span>
+            <span className="text-gray-500 dark:text-gray-400">{getRelativeTime(transaction.date)}</span>
+          </div>
+          {/* Address - right side */}
+          {hasLocation && (
+            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+              <MapPin className="w-3.5 h-3.5" />
+              <span className="max-w-[150px] truncate">
+                {[
+                  transaction.location_city,
+                  transaction.location_region,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
+                {transaction.location_store_number && ` #${transaction.location_store_number}`}
               </span>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
         {/* Amount display */}
-        <div className="text-center py-4">
+        <div className="text-center">
           <p
             className={`text-4xl font-bold ${
               isIncome ? "text-winning-green" : "text-navy-dark dark:text-white"
@@ -620,14 +672,29 @@ function TransactionDetailContent({
             {isIncome ? "+" : "-"}
             {formatCurrency(transaction.amount)}
           </p>
-          <div className="flex items-center justify-center gap-2 mt-3">
-            {transaction.pending && (
-              <Badge className="bg-warning-amber/20 text-warning-amber border-0">
-                <Clock className="w-3 h-3 mr-1" />
-                Pending
-              </Badge>
-            )}
-            {/* Inline category picker */}
+          {transaction.pending && (
+            <Badge className="bg-warning-amber/20 text-warning-amber border-0 mt-2">
+              <Clock className="w-3 h-3 mr-1" />
+              Pending
+            </Badge>
+          )}
+        </div>
+
+        {/* Category section - separate card */}
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Tag className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wide">Category</span>
+              {hasAICategory && confidenceDisplay && (
+                <div className="flex items-center gap-1 ml-1">
+                  <Sparkles className="w-3 h-3 text-purple-500" />
+                  <Badge className={`${confidenceDisplay.bg} ${confidenceDisplay.text} text-[10px] border-0 px-1.5 py-0`}>
+                    {Math.round((transaction.categorization_confidence || 0) * 100)}%
+                  </Badge>
+                </div>
+              )}
+            </div>
             <CategoryPicker
               value={category}
               onChange={handleCategoryChange}
@@ -636,7 +703,7 @@ function TransactionDetailContent({
           </div>
         </div>
 
-        {/* Transaction timeline */}
+        {/* Transaction dates */}
         <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 text-gray-500">
@@ -660,165 +727,6 @@ function TransactionDetailContent({
               </div>
             )}
         </div>
-
-        {/* AI Categorization info - enhanced with confidence color */}
-        {hasAICategory && confidenceDisplay && (
-          <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-xl p-4 glass-card-light">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-purple-500" />
-              <span className="font-medium text-purple-700 dark:text-purple-300">
-                AI Categorization
-              </span>
-              <Badge className={`${confidenceDisplay.bg} ${confidenceDisplay.text} text-xs border-0 ml-auto`}>
-                {Math.round((transaction.categorization_confidence || 0) * 100)}% • {confidenceDisplay.label}
-              </Badge>
-            </div>
-            <p className="text-sm text-purple-600 dark:text-purple-400">
-              Source:{" "}
-              <span className="capitalize">
-                {transaction.categorization_source?.replace("_", " ")}
-              </span>
-            </p>
-            {transaction.pfc_detailed && (
-              <p className="text-sm text-purple-600 dark:text-purple-400 mt-1">
-                Detailed: {transaction.pfc_detailed.replace(/_/g, " ")}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Account Info - Collapsible */}
-        <div className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden glass-card-light">
-          <button
-            onClick={() => setAccountExpanded(!accountExpanded)}
-            className="w-full flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-              <Wallet className="w-4 h-4" />
-              <span className="font-medium">Account Information</span>
-            </div>
-            {accountExpanded ? (
-              <ChevronUp className="w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            )}
-          </button>
-          {accountExpanded && (
-            <div className="px-4 pb-4 space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Building2 className="w-4 h-4" />
-                  Institution
-                </div>
-                <span className="font-medium text-navy-dark dark:text-white">
-                  {transaction.institution_name || "Unknown"}
-                </span>
-              </div>
-              {transaction.payment_channel && (
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <CreditCard className="w-4 h-4" />
-                    Payment Method
-                  </div>
-                  <span className="font-medium text-navy-dark dark:text-white capitalize">
-                    {transaction.payment_channel}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Payment Details - Collapsible */}
-        {hasPaymentDetails && (
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden glass-card-light">
-            <button
-              onClick={() => setPaymentExpanded(!paymentExpanded)}
-              className="w-full flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <FileText className="w-4 h-4" />
-                <span className="font-medium">Payment Details</span>
-              </div>
-              {paymentExpanded ? (
-                <ChevronUp className="w-4 h-4 text-gray-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              )}
-            </button>
-            {paymentExpanded && (
-              <div className="px-4 pb-4 space-y-2 text-sm">
-                {transaction.name && transaction.name !== transaction.merchant_name && (
-                  <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded">
-                    <div className="text-xs text-gray-500 mb-1">Bank Description</div>
-                    <div className="font-mono text-xs text-gray-700 dark:text-gray-300">{transaction.name}</div>
-                  </div>
-                )}
-                {transaction.payment_channel && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Channel</span>
-                    <span className="capitalize">{transaction.payment_channel}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Location (collapsible) */}
-        {hasLocation && (
-          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden">
-            <button
-              onClick={() => setLocationExpanded(!locationExpanded)}
-              className="w-full flex items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-                <MapPin className="w-4 h-4" />
-                <span className="font-medium">Location</span>
-              </div>
-              {locationExpanded ? (
-                <ChevronUp className="w-4 h-4 text-gray-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-gray-400" />
-              )}
-            </button>
-            {locationExpanded && (
-              <div className="px-4 pb-4 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                {transaction.location_address && <p>{transaction.location_address}</p>}
-                <p>
-                  {[
-                    transaction.location_city,
-                    transaction.location_region,
-                    transaction.location_postal_code,
-                  ]
-                    .filter(Boolean)
-                    .join(", ")}
-                </p>
-                {transaction.location_store_number && (
-                  <p className="text-gray-500">
-                    Store #{transaction.location_store_number}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Merchant website */}
-        {transaction.merchant_website && (
-          <a
-            href={transaction.merchant_website}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-teal hover:text-teal/80 transition-colors"
-          >
-            <Globe className="w-4 h-4" />
-            {transaction.merchant_website
-              .replace(/^https?:\/\//, "")
-              .replace(/\/$/, "")}
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        )}
 
         {/* Description */}
         {transaction.name && transaction.name !== transaction.merchant_name && (
@@ -1150,6 +1058,7 @@ function TransactionRow({
             <CategoryPicker
               value={category}
               onChange={(cat) => onCategoryChange(transaction.id, cat)}
+              variant="inline"
             />
           </div>
           {tags && tags.length > 0 && (

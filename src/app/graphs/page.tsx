@@ -308,10 +308,14 @@ function HomeContent() {
     fetchAllTransactionTags();
   }, [supabase, selectedEntity?.tenant_id, allTransactions]);
 
-  // Fetch available tags for the tenant
+  // All tenant tags (for TagPicker quick-add)
+  const [allTenantTags, setAllTenantTags] = useState<Tag[]>([]);
+
+  // Fetch all tags for the tenant
   useEffect(() => {
     async function fetchTags() {
       if (!selectedEntity?.tenant_id) {
+        setAllTenantTags([]);
         setAvailableTags([]);
         return;
       }
@@ -325,7 +329,7 @@ function HomeContent() {
           .order("name");
 
         if (error) throw error;
-        setAvailableTags(data || []);
+        setAllTenantTags(data || []);
       } catch (err) {
         console.error("Failed to fetch tags:", err);
       } finally {
@@ -334,6 +338,25 @@ function HomeContent() {
     }
     fetchTags();
   }, [supabase, selectedEntity?.tenant_id]);
+
+  // Compute tags that are actually used in the current entity's transactions
+  // This filters the filter bar to only show relevant tags
+  useEffect(() => {
+    if (allTenantTags.length === 0 || allTransactionTagsMap.size === 0) {
+      setAvailableTags([]);
+      return;
+    }
+
+    // Get all tag IDs used in current entity's transactions
+    const usedTagIds = new Set<string>();
+    allTransactionTagsMap.forEach((tags) => {
+      tags.forEach((tag) => usedTagIds.add(tag.id));
+    });
+
+    // Filter tenant tags to only those used in this entity
+    const entityRelevantTags = allTenantTags.filter((tag) => usedTagIds.has(tag.id));
+    setAvailableTags(entityRelevantTags);
+  }, [allTenantTags, allTransactionTagsMap]);
 
   // Fetch transaction-tag mappings when tags are selected
   useEffect(() => {
