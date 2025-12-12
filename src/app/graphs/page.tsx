@@ -679,6 +679,14 @@ function HomeContent() {
                   onClearAccountFilter={handleClearAccountFilter}
                   isLoading={isLoading}
                   showRunningBalance={true}
+                  startingBalance={
+                    // Use actual account balance when filtering by single account
+                    accountFilter
+                      ? accounts.find(a => a.id === accountFilter)?.balance_current || 0
+                      : accounts.length === 1
+                        ? accounts[0].balance_current || 0
+                        : 0
+                  }
                   receiptsMap={receiptsMap}
                 />
               </section>

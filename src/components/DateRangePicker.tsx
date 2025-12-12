@@ -26,6 +26,7 @@ interface CustomDateRange {
 interface DateRangePickerProps {
   value?: DateRangeOption;
   onChange?: (value: DateRangeOption, customRange?: CustomDateRange) => void;
+  onCustomRangeChange?: (customRange: CustomDateRange) => void;
   readOnly?: boolean;
   variant?: "default" | "glass";
   showPeriodPresets?: boolean;
@@ -60,6 +61,7 @@ function formatDateDisplay(dateStr: string): string {
 export function DateRangePicker({
   value = "ytd_parent",
   onChange,
+  onCustomRangeChange,
   readOnly = true,
   variant = "default",
   showPeriodPresets = false
@@ -184,7 +186,14 @@ export function DateRangePicker({
                   <input
                     type="date"
                     value={customRange.startDate}
-                    onChange={(e) => setCustomRange(prev => ({ ...prev, startDate: e.target.value }))}
+                    onChange={(e) => {
+                      const newRange = { ...customRange, startDate: e.target.value };
+                      setCustomRange(newRange);
+                      // Auto-trigger if both dates are set
+                      if (newRange.startDate && newRange.endDate) {
+                        onCustomRangeChange?.(newRange);
+                      }
+                    }}
                     className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-navy-dark dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-winning-green/50 focus:border-transparent"
                   />
                 </div>
@@ -196,7 +205,14 @@ export function DateRangePicker({
                   <input
                     type="date"
                     value={customRange.endDate}
-                    onChange={(e) => setCustomRange(prev => ({ ...prev, endDate: e.target.value }))}
+                    onChange={(e) => {
+                      const newRange = { ...customRange, endDate: e.target.value };
+                      setCustomRange(newRange);
+                      // Auto-trigger if both dates are set
+                      if (newRange.startDate && newRange.endDate) {
+                        onCustomRangeChange?.(newRange);
+                      }
+                    }}
                     min={customRange.startDate}
                     className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-navy-dark dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-winning-green/50 focus:border-transparent"
                   />

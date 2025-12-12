@@ -1026,10 +1026,10 @@ function TransactionRow({
       </div>
 
       {/* Transaction info */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 max-w-[300px]">
         <div className="flex items-center gap-2">
-          <p className="font-medium text-navy-dark dark:text-white truncate">
-            {merchantName}
+          <p className="font-medium text-navy-dark dark:text-white truncate max-w-[200px]" title={merchantName}>
+            {merchantName.length > 30 ? `${merchantName.slice(0, 30)}...` : merchantName}
           </p>
           {hasReceipt && (
             <span
@@ -1062,21 +1062,21 @@ function TransactionRow({
         </div>
       </div>
 
-      {/* Amount */}
-      <div className="flex-shrink-0 text-right">
-        <p className={`font-semibold ${amountDisplay.className}`}>
-          {amountDisplay.formatted}
+      {/* Amount - green for income (negative in Plaid), red for expenses (positive in Plaid) */}
+      <div className="flex-shrink-0 text-right min-w-[90px]">
+        <p className={`font-semibold ${transaction.amount < 0 ? "text-winning-green" : "text-loss-red"}`}>
+          {transaction.amount < 0 ? "+" : "-"}{formatCurrency(transaction.amount)}
         </p>
       </div>
 
-      {/* Running Balance */}
+      {/* Running Balance - neutral color unless negative */}
       {showBalance && runningBalance !== undefined && (
-        <div className="flex-shrink-0 text-right w-28">
+        <div className="flex-shrink-0 text-right min-w-[100px]">
           <p
             className={`text-sm font-medium ${
-              runningBalance >= 0
-                ? "text-gray-600 dark:text-gray-400"
-                : "text-loss-red"
+              runningBalance < 0
+                ? "text-loss-red"
+                : "text-gray-600 dark:text-gray-300"
             }`}
           >
             {formatCurrencyWithSign(runningBalance)}
@@ -1401,24 +1401,24 @@ export function TransactionTable({
     );
   }, [localTransactions, categoryFilter, accountFilter, searchQuery]);
 
-  // Calculate running balances (from oldest to newest, then reverse for display)
+  // Calculate running balances starting from current balance, working backwards
+  // This shows what the balance was AFTER each transaction
   const transactionsWithBalance = useMemo(() => {
     if (!showRunningBalance) return filteredTransactions.map((tx) => ({ tx, balance: 0 }));
 
-    // Sort ascending by date to calculate running balance
-    const sorted = [...filteredTransactions].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
+    // Transactions are already sorted descending (newest first)
+    // Start from current balance and work backwards
     let balance = startingBalance;
-    const withBalance = sorted.map((tx) => {
+    const withBalance = filteredTransactions.map((tx) => {
+      // This balance is AFTER this transaction
+      const balanceAfterTx = balance;
       // In Plaid, negative amounts are credits (income), positive are debits (expenses)
-      balance = balance - tx.amount; // Subtract because Plaid inverts the sign
-      return { tx, balance };
+      // To get balance BEFORE this tx, we reverse the transaction effect
+      balance = balance + tx.amount; // Add back because we're going backwards
+      return { tx, balance: balanceAfterTx };
     });
 
-    // Reverse back to descending order for display
-    return withBalance.reverse();
+    return withBalance;
   }, [filteredTransactions, showRunningBalance, startingBalance]);
 
   // Pagination
@@ -1726,8 +1726,8 @@ export function TransactionTable({
           ) : (
             Array.from(groupedTransactions.entries()).map(([date, txs]) => (
               <div key={date}>
-                {/* Date header */}
-                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-10">
+                {/* Date header - z-index lower than sidebar (z-50) but above content */}
+                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-800/50 sticky top-0 z-[5]">
                   <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {getDateGroupLabel(date)}
                   </span>

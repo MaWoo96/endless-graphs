@@ -43,8 +43,8 @@ export default function GraphsLayout({
       </div>
       
       <SidebarInset className="flex flex-col min-h-screen">
-        {/* Header with breadcrumb - simplified on mobile */}
-        <header className="flex h-12 md:h-12 shrink-0 items-center gap-2 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-40">
+        {/* Header with breadcrumb - simplified on mobile, z-index below sidebar */}
+        <header className="flex h-12 md:h-12 shrink-0 items-center gap-2 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-30">
           <div className="flex items-center gap-2 px-3 md:px-4 w-full">
             {/* Sidebar trigger - only on desktop */}
             <SidebarTrigger className="hidden md:flex -ml-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" />
