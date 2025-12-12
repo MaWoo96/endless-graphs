@@ -33,6 +33,15 @@ function getAccountColor(type: string, subtype: string | null): string {
 }
 
 /**
+ * Check if account is a liability (owes money) vs asset (has money)
+ * Liabilities: credit cards, loans
+ * Assets: checking, savings, investment, depository
+ */
+function isLiabilityAccount(type: string): boolean {
+  return type === "credit" || type === "loan";
+}
+
+/**
  * Format balance for display
  */
 function formatBalance(balance: number | null): string {
@@ -124,6 +133,7 @@ export function AccountFilterPills({
             const Icon = getAccountIcon(account.type, account.subtype);
             const isSelected = selectedAccountId === account.plaid_account_id;
             const colorClasses = getAccountColor(account.type, account.subtype);
+            const isLiability = isLiabilityAccount(account.type);
 
             return (
               <button
@@ -138,6 +148,16 @@ export function AccountFilterPills({
                 title={`${institution} - ${account.official_name || account.name}`}
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
+                {/* Asset/Liability indicator dot - green for assets, red for liabilities */}
+                <span
+                  className={cn(
+                    "w-2 h-2 rounded-full flex-shrink-0",
+                    isLiability
+                      ? "bg-rose-500"
+                      : "bg-emerald-500"
+                  )}
+                  title={isLiability ? "Liability" : "Asset"}
+                />
                 <span className="truncate max-w-[120px]">
                   {getAccountDisplayName(account)}
                 </span>

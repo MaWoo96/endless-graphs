@@ -46,6 +46,7 @@ import {
   Image as ImageIcon,
   Filter,
   BookOpen,
+  Edit3,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Transaction, Tag as TagType } from "@/lib/supabase/types";
@@ -794,6 +795,18 @@ function TransactionDetailContent({
           </div>
         )}
 
+        {/* Notes Section Header - styled like merchant header */}
+        <div className="border-t border-gray-200 dark:border-gray-800 pt-6 mt-2">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <MessageSquare className="w-5 h-5 text-gray-500" />
+            </div>
+            <h3 className="font-semibold text-lg text-navy-dark dark:text-white">
+              Notes & Tags
+            </h3>
+          </div>
+        </div>
+
         {/* Bookkeeper Notes Section (read-only, from Airtable) */}
         {transaction.bookkeeper_notes && (
           <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4">
@@ -832,12 +845,15 @@ function TransactionDetailContent({
           </div>
         )}
 
-        {/* Review Section */}
-        <div className="border-t border-gray-200 dark:border-gray-800 pt-6 mt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Your Notes
-            </h4>
+        {/* Your Notes Section */}
+        <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Edit3 className="w-4 h-4 text-gray-500" />
+              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Your Notes
+              </h4>
+            </div>
             <div className="flex items-center gap-2">
               {/* Flag button */}
               <button
@@ -1021,7 +1037,7 @@ function TransactionRow({
       </div>
 
       {/* Transaction info */}
-      <div className="flex-1 min-w-0 max-w-[300px]">
+      <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="font-medium text-navy-dark dark:text-white truncate max-w-[200px]" title={merchantName}>
             {merchantName.length > 30 ? `${merchantName.slice(0, 30)}...` : merchantName}
@@ -1069,7 +1085,7 @@ function TransactionRow({
       </div>
 
       {/* Amount - green for income (negative in Plaid), red for expenses (positive in Plaid) */}
-      <div className="flex-shrink-0 text-right min-w-[90px]">
+      <div className="flex-shrink-0 text-right w-28">
         <p className={`font-semibold ${transaction.amount < 0 ? "text-winning-green" : "text-loss-red"}`}>
           {transaction.amount < 0 ? "+" : "-"}{formatCurrency(transaction.amount)}
         </p>
@@ -1077,7 +1093,7 @@ function TransactionRow({
 
       {/* Running Balance - neutral color unless negative */}
       {showBalance && runningBalance !== undefined && (
-        <div className="flex-shrink-0 text-right min-w-[100px]">
+        <div className="flex-shrink-0 text-right w-28">
           <p
             className={`text-sm font-medium ${
               runningBalance < 0
@@ -1683,25 +1699,14 @@ export function TransactionTable({
               </div>
             )}
 
-            {/* Summary stats & Export */}
-            <div className="flex items-center gap-4 text-sm">
-              <span className="text-gray-500">
-                {filteredTransactions.length} transactions
-              </span>
-              <span className="text-winning-green font-medium">
-                +{formatCurrency(totals.income)}
-              </span>
-              <span className="text-loss-red font-medium">
-                -{formatCurrency(totals.expenses)}
-              </span>
-              <button
-                onClick={() => exportToCSV(filteredTransactions)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                title="Export to CSV"
-              >
-                <Download className="w-4 h-4" />
-              </button>
-            </div>
+            {/* Export */}
+            <button
+              onClick={() => exportToCSV(filteredTransactions)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              title="Export to CSV"
+            >
+              <Download className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -1716,7 +1721,7 @@ export function TransactionTable({
           </div>
           <div className="w-10" /> {/* Spacer for icon */}
           <div className="flex-1">Transaction</div>
-          <div className="flex-shrink-0 text-right w-24">Amount</div>
+          <div className="flex-shrink-0 text-right w-28">Amount</div>
           {showRunningBalance && (
             <div className="flex-shrink-0 text-right w-28">Balance</div>
           )}
