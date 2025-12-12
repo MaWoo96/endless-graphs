@@ -318,22 +318,50 @@ export function TagPicker({
 }
 
 /**
- * Compact inline tag display for transaction rows
+ * Compact inline tag display for transaction rows - dot style for minimal footprint
  */
 export function TagBadges({
   tags,
-  maxDisplay = 2,
+  maxDisplay = 3,
   onClick,
+  variant = "dots",
 }: {
   tags: Tag[];
   maxDisplay?: number;
   onClick?: () => void;
+  variant?: "dots" | "pills";
 }) {
   if (tags.length === 0) return null;
 
   const displayTags = tags.slice(0, maxDisplay);
   const remaining = tags.length - maxDisplay;
 
+  // Dot variant - minimal colored dots with tooltip
+  if (variant === "dots") {
+    return (
+      <div
+        className={cn(
+          "flex items-center gap-0.5",
+          onClick && "cursor-pointer"
+        )}
+        onClick={onClick}
+        title={tags.map(t => t.name).join(", ")}
+      >
+        {displayTags.map((tag) => (
+          <div
+            key={tag.id}
+            className="w-2 h-2 rounded-full ring-1 ring-white dark:ring-gray-900 transition-transform hover:scale-125"
+            style={{ backgroundColor: tag.color || "#6366f1" }}
+          />
+        ))}
+        {remaining > 0 && (
+          <span className="text-[9px] text-gray-400 ml-0.5">+{remaining}</span>
+        )}
+      </div>
+    );
+  }
+
+  // Pills variant - full tag names
   return (
     <div
       className={cn(
@@ -345,12 +373,17 @@ export function TagBadges({
       {displayTags.map((tag) => (
         <span
           key={tag.id}
-          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium"
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium border"
           style={{
-            backgroundColor: `${tag.color || "#6366f1"}20`,
+            backgroundColor: `${tag.color || "#6366f1"}15`,
+            borderColor: `${tag.color || "#6366f1"}30`,
             color: tag.color || "#6366f1",
           }}
         >
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ backgroundColor: tag.color || "#6366f1" }}
+          />
           {tag.name}
         </span>
       ))}
@@ -365,6 +398,7 @@ export function TagBadges({
 
 /**
  * Tag filter pills for filtering transactions by tags
+ * Modern, compact design that integrates well with other filters
  */
 export function TagFilterPills({
   tags,
@@ -385,10 +419,10 @@ export function TagFilterPills({
 }) {
   if (isLoading) {
     return (
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        <div className="h-8 w-20 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
-        <div className="h-8 w-24 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
-        <div className="h-8 w-16 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+      <div className="flex items-center gap-2">
+        <div className="h-7 w-16 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse" />
+        <div className="h-7 w-20 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse" />
+        <div className="h-7 w-14 rounded-lg bg-gray-200 dark:bg-gray-700 animate-pulse" />
       </div>
     );
   }
@@ -400,33 +434,20 @@ export function TagFilterPills({
   const hasActiveFilters = selectedTagIds.length > 0;
 
   return (
-    <div className="flex flex-col gap-2">
-      {/* Header with label and clear button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <TagIcon className="w-4 h-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Filter by Tags
+    <div className="flex items-center gap-3">
+      {/* Label */}
+      <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+        <TagIcon className="w-3.5 h-3.5" />
+        <span>Tags</span>
+        {hasActiveFilters && filteredCount !== undefined && (
+          <span className="text-teal font-medium">
+            {filteredCount}/{totalCount}
           </span>
-          {hasActiveFilters && filteredCount !== undefined && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              ({filteredCount} of {totalCount} transactions)
-            </span>
-          )}
-        </div>
-        {hasActiveFilters && onClearAll && (
-          <button
-            onClick={onClearAll}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-          >
-            <X className="w-3 h-3" />
-            Clear all
-          </button>
         )}
       </div>
 
-      {/* Tag pills */}
-      <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin">
+      {/* Tag chips - horizontal scroll */}
+      <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-thin flex-1">
         {tags.map((tag) => {
           const isSelected = selectedTagIds.includes(tag.id);
           return (
@@ -434,32 +455,46 @@ export function TagFilterPills({
               key={tag.id}
               onClick={() => onToggleTag(tag.id)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap border",
+                "group flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap",
                 isSelected
-                  ? "shadow-sm ring-2 ring-offset-1 ring-offset-white dark:ring-offset-gray-900"
-                  : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  ? "shadow-sm"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
               )}
               style={
                 isSelected
                   ? {
                       backgroundColor: `${tag.color || "#6366f1"}20`,
-                      borderColor: `${tag.color || "#6366f1"}40`,
                       color: tag.color || "#6366f1",
-                      // @ts-ignore - ring color via style
-                      "--tw-ring-color": `${tag.color || "#6366f1"}60`,
                     }
                   : undefined
               }
             >
-              <div
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+              <span
+                className={cn(
+                  "w-2 h-2 rounded-full transition-transform",
+                  isSelected && "scale-110"
+                )}
                 style={{ backgroundColor: tag.color || "#6366f1" }}
               />
               <span>{tag.name}</span>
+              {isSelected && (
+                <Check className="w-3 h-3 ml-0.5 opacity-70" />
+              )}
             </button>
           );
         })}
       </div>
+
+      {/* Clear button */}
+      {hasActiveFilters && onClearAll && (
+        <button
+          onClick={onClearAll}
+          className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors whitespace-nowrap"
+        >
+          <X className="w-3 h-3" />
+          <span className="hidden sm:inline">Clear</span>
+        </button>
+      )}
     </div>
   );
 }
