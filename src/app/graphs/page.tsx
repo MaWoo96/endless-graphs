@@ -793,7 +793,19 @@ function HomeContent() {
                       tags={availableTags}
                       selectedTagIds={selectedTagIds}
                       onToggleTag={handleToggleTag}
+                      onClearAll={handleClearTagFilters}
                       isLoading={tagsLoading}
+                      filteredCount={
+                        selectedTagIds.length > 0
+                          ? allTransactions.filter((tx) =>
+                              transactionTagsMap.has(tx.id) &&
+                              selectedTagIds.some((tagId) =>
+                                transactionTagsMap.get(tx.id)?.includes(tagId)
+                              )
+                            ).length
+                          : undefined
+                      }
+                      totalCount={allTransactions.length}
                     />
                   </div>
                 )}

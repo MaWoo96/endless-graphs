@@ -370,12 +370,18 @@ export function TagFilterPills({
   tags,
   selectedTagIds,
   onToggleTag,
+  onClearAll,
   isLoading = false,
+  filteredCount,
+  totalCount,
 }: {
   tags: Tag[];
   selectedTagIds: string[];
   onToggleTag: (tagId: string) => void;
+  onClearAll?: () => void;
   isLoading?: boolean;
+  filteredCount?: number;
+  totalCount?: number;
 }) {
   if (isLoading) {
     return (
@@ -391,40 +397,69 @@ export function TagFilterPills({
     return null;
   }
 
+  const hasActiveFilters = selectedTagIds.length > 0;
+
   return (
-    <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin">
-      {tags.map((tag) => {
-        const isSelected = selectedTagIds.includes(tag.id);
-        return (
+    <div className="flex flex-col gap-2">
+      {/* Header with label and clear button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <TagIcon className="w-4 h-4 text-gray-500" />
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Filter by Tags
+          </span>
+          {hasActiveFilters && filteredCount !== undefined && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              ({filteredCount} of {totalCount} transactions)
+            </span>
+          )}
+        </div>
+        {hasActiveFilters && onClearAll && (
           <button
-            key={tag.id}
-            onClick={() => onToggleTag(tag.id)}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap border",
-              isSelected
-                ? "shadow-sm ring-2 ring-offset-1 ring-offset-white dark:ring-offset-gray-900"
-                : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-            )}
-            style={
-              isSelected
-                ? {
-                    backgroundColor: `${tag.color || "#6366f1"}20`,
-                    borderColor: `${tag.color || "#6366f1"}40`,
-                    color: tag.color || "#6366f1",
-                    // @ts-ignore - ring color via style
-                    "--tw-ring-color": `${tag.color || "#6366f1"}60`,
-                  }
-                : undefined
-            }
+            onClick={onClearAll}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
           >
-            <div
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: tag.color || "#6366f1" }}
-            />
-            <span>{tag.name}</span>
+            <X className="w-3 h-3" />
+            Clear all
           </button>
-        );
-      })}
+        )}
+      </div>
+
+      {/* Tag pills */}
+      <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin">
+        {tags.map((tag) => {
+          const isSelected = selectedTagIds.includes(tag.id);
+          return (
+            <button
+              key={tag.id}
+              onClick={() => onToggleTag(tag.id)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all whitespace-nowrap border",
+                isSelected
+                  ? "shadow-sm ring-2 ring-offset-1 ring-offset-white dark:ring-offset-gray-900"
+                  : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+              )}
+              style={
+                isSelected
+                  ? {
+                      backgroundColor: `${tag.color || "#6366f1"}20`,
+                      borderColor: `${tag.color || "#6366f1"}40`,
+                      color: tag.color || "#6366f1",
+                      // @ts-ignore - ring color via style
+                      "--tw-ring-color": `${tag.color || "#6366f1"}60`,
+                    }
+                  : undefined
+              }
+            >
+              <div
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: tag.color || "#6366f1" }}
+              />
+              <span>{tag.name}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
